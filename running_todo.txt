@@ -1,0 +1,54 @@
+I ) /users/nisoni/eihart/EIHaRT/data/data_collator.py
+
+1) rename is_user_level_ft to has_user_ids or something.
+
+
+/users/nisoni/eihart/EIHaRT/src/model/mtl_eihart.py 
+
+II) AttributeClassificationHead
+
+1) Revisit to generalize:
+self.use_history_output = True #config.use_history_output
+# self.use_hart_no_hist = config.use_hart_no_hist
+
+2) Revisit layer norm and transform for ac_task
+
+III) /users/nisoni/eihart/EIHaRT/run_mtl_eihart.py
+
+1) Generalize (to include in config's initialization?)
++ change the name of hart_config to eihart_config?
++ add it to eihart's config initialization?
+(+ remove redundancy)
+:
+
+config.ac_task = data_args.ac_task
+
+config_kwargs = {
+        "cache_dir": model_args.cache_dir,
+        "revision": model_args.model_revision,
+        "use_auth_token": True if model_args.use_auth_token else None,
+        "ac_task_name": data_args.ac_task_name,
+        "ac_num_labels": data_args.ac_num_labels if data_args.ac_num_labels is not None else 1,
+    }
+
+
+IV) Running script:
+
+data_args:
+
+add :
+ac_task_name
+ac_num_labels
+
+V) config:
+
+add default ac_num_labels and ac_task_name ??
+
+
+/users/nisoni/eihart/EIHaRT/data/utils_hart/mtl_eihart_data_utils.py 
+
+continue with editing the select query (user_dataset_id; and source_not_included -- for fb_1pc)
+
+V) /users/nisoni/eihart/EIHaRT/data/utils_hart/mtl_eihart_data_utils.py
+
+fix the comments

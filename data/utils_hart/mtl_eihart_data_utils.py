@@ -7,6 +7,7 @@ from transformers import BatchEncoding
 user_id_column = 'user_id'
 message_column = 'message'
 order_by_fields = [user_id_column, 'updated_time']
+ac_label_column = 'ac_label'
 
 def get_fields():
     return {
@@ -20,14 +21,18 @@ def get_conn(data_args):
     conn = engine.connect()
     return conn
 
-def get_data_from_db(logger, table, data_args, data_type):
+def get_data_from_db(logger, table, data_args, data_type, ac_label_field):
 
     logger.info("Getting data from table:{} in {} database".format(table, data_args.db))
     conn = get_conn(data_args)   
     
-    select_clause = 'select user_dataset_id' + ', ' + message_column + ', message_id, updated_time from ' + table
+    ## uncomment for final code
+    # select_clause = 'select user_dataset_id' + ', ' + user_id_column + ', ' + message_column + ', message_id, updated_time from ' + table
+
+    select_clause = 'select '  + user_id_column + ', ' + message_column + ', message_id, updated_time from ' + table
+
     order_clause = ' order by ' + ', '.join(order_by_fields)
-    limit_clause =  '' if not __debug__ else ' limit 10'
+    limit_clause =  '' #if not __debug__ else ' limit 10'
     source_filter_column = 'dataset '
     source_not_included = "'fb'"
 
@@ -38,8 +43,11 @@ def get_data_from_db(logger, table, data_args, data_type):
             where_clause = ' where ' + source_filter_column + 'not in (' + source_not_included + ') and ' + dev_filter_column + '=0' + ' and ' + test_filter_column + '=0'
             stmt = select_clause + where_clause + order_clause + limit_clause
         else:
-            where_clause = ' where ' + source_filter_column + 'not in (' + source_not_included + ')'
-            stmt = select_clause + where_clause + order_clause + limit_clause       
+            ## uncomment for final code
+            # where_clause = ' where ' + source_filter_column + 'not in (' + source_not_included + ')'
+
+            where_clause = ''
+            stmt = select_clause + where_clause + order_clause + limit_clause 
         results = conn.execute(stmt)
     elif data_type=='dev':
         if 'en_non_oosmsgs' in table:      
@@ -63,15 +71,68 @@ def get_data_from_db(logger, table, data_args, data_type):
             filter_column = 'is_oosmsg_test'
             where_clause = ' where ' + source_filter_column + 'not in (' + source_not_included + ') and ' + filter_column + '=1'
             stmt = select_clause + where_clause + order_clause + limit_clause
+        ## fix this code when generalizing code
+        else:
+            where_clause = ''
+            stmt = select_clause + where_clause + order_clause + limit_clause 
         results = conn.execute(stmt)
     
     data = pd.DataFrame(results.fetchall()) 
     data.columns = results.keys()
-    data[user_id_column] = data['user_dataset_id']
+    # data[user_id_column] = data['user_dataset_id']
     data = data[data.message.notnull()]
 
+    logger.info("Getting labels for table:{} in {} database".format(table, data_args.db))
+    ac_labels = get_ac_labels(conn, data_type, table, ac_label_field)
+
     conn.close()
-    return data
+    return data, ac_labels
+
+def get_ac_labels(conn, data_type, data_table, label_field):
+
+    select_clause = 'select user_id, ' + label_field + ' from '
+    where_clause = ''
+    order_clause = ' order by user_id'
+    limit_clause =  '' #if not __debug__ else ' limit 10'
+
+    if data_type=='train':
+        ## fix this if True condition when generalizing code
+        if 'en_non_oosmsgs' in data_table or True: 
+            table = 'masterstats_lbp_upt50_en_train'
+            where_clause = ' where user_id in (select distinct user_id from ' + data_table + ')'
+        else:
+            table = 'masterstats_lbp_trainingset'
+            filter_table_where = '20_outcomes_all where r10pct_test_fold=0' 
+            where_clause = ' where user_id in (select distinct user_id from ' + filter_table_where + ')'
+    elif data_type=='dev':
+        if 'en_non_oosmsgs' in data_table:      
+            table = 'masterstats_lbp_upt50_en_dev'
+        elif 'en_oosmsgs' in data_table:      
+            table = 'masterstats_lbp_upt50_en_dev_seen'  
+        else:
+            table = 'masterstats_lbp_trainingset'
+            filter_table_where = '20_outcomes_all where r10pct_test_fold=1' 
+            where_clause = ' where user_id in (select distinct user_id from ' + filter_table_where + ')'
+    elif data_type=='test':
+        if 'en_non_oosmsgs' in data_table:      
+            table = 'masterstats_lbp_upt50_en_test'
+        elif 'en_oosmsgs' in data_table:      
+            table = 'masterstats_lbp_upt50_en_test_seen'
+        else:
+            ## fix this when generalizing
+            # table = 'masterstats_lbp_testset'
+            table = 'masterstats_lbp_upt50_en_train'
+            where_clause = ' where user_id in (select distinct user_id from ' + data_table + ')'
+    elif data_type=='test_qlength':
+        table = 'masterstats_lbp_testset_qlen100'
+
+    stmt = select_clause + table + where_clause +order_clause + limit_clause
+    results = conn.execute(stmt)
+
+    labels = pd.DataFrame(results.fetchall()) 
+    labels.columns = [user_id_column, ac_label_column]
+    
+    return labels
 
 def get_data_from_csv(logger, csv_file, fields, data_type):
     logger.info("Getting data from {} data pickle file:{}".format(data_type, csv_file))
@@ -135,7 +196,14 @@ def transform_data(logger, tokenizer, data, block_size):
     process_data(data_new, tokenizer, block_size)
     logger.info("--- %s seconds ---" % (time.time() - start_time))
     return data_new 
-    
+
+def join_data_and_ac_labels(data, labels):
+    assert len(data)==len(labels)
+    merged_data = pd.merge(data, labels, on=user_id_column)
+    assert len(merged_data)==len(data)
+    assert merged_data.shape[-1]==4
+    return merged_data
+
 def group_data(data, max_blocks, logger):
     batch = pd.DataFrame(data.batch_encodings.tolist())
     actual_blocks = len(batch.columns)
@@ -143,17 +211,22 @@ def group_data(data, max_blocks, logger):
     if max_blocks is not None and len(batch.columns) > max_blocks:
         batch = batch[range(max_blocks)]
         logger.info('************ Trimmed Number of blocks = {} *************'.format(len(batch.columns)))
-    return batch.to_numpy().tolist(), actual_blocks
+    assert len(data)==len(batch)
+    data = pd.concat((data[[user_id_column, ac_label_column]], batch), axis=1)
+    assert data.shape[-1]==batch.shape[-1] + 2
+    return data[:10].to_numpy().tolist(), actual_blocks # fix code: remove the limit 
 
 def load_dataset(logger, tokenizer, table, block_size, max_blocks, data_args, data_type, disable_hulm_batching):
     fields = get_fields()
+    ac_label_field = data_args.ac_task_name
     if 'pkl' in table:
         data = get_data_from_pkl(logger, table, fields, data_type)
     elif 'csv' in table:
         data = get_data_from_csv(logger, table, fields, data_type)
     else:
-        data = get_data_from_db(logger, table, data_args, data_type)
+        data, ac_labels = get_data_from_db(logger, table, data_args, data_type, ac_label_field)
     data = transform_data(logger, tokenizer, data, block_size)
+    data = join_data_and_ac_labels(data, ac_labels)
     logger.info('************** Block size = {} *************'.format(block_size))
     if not disable_hulm_batching:
         return group_data(data, max_blocks, logger) 
@@ -161,3 +234,4 @@ def load_dataset(logger, tokenizer, table, block_size, max_blocks, data_args, da
         instances, uncut_num_blocks = group_data(data, max_blocks, logger)
         flat_list = [item for sublist in instances for item in sublist if item is not None]
         return flat_list, uncut_num_blocks
+

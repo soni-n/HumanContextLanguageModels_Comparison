@@ -6,7 +6,7 @@ import torch
 from transformers.file_utils import ModelOutput
 
 @dataclass
-class EIHaRTOutput(ModelOutput):
+class HaRTOutput(ModelOutput):
     """
     Superset of ArHulmCausalLMOutput with history in the output additionally. 
 
@@ -15,10 +15,8 @@ class EIHaRTOutput(ModelOutput):
     Base class for Auto regressive Human language model outputs.
 
     Args:
-        hulm_loss (:obj:`torch.FloatTensor` of shape :obj:`(1,)`, `optional`, returned when :obj:`labels` is provided):
-            Human Language modeling loss (for next-token prediction given user state and previous tokens).
-        ac_loss (:obj:`torch.FloatTensor` of shape :obj:`(1,)`, `optional`, returned when :obj:`labels` is provided):
-            Auxiliary task loss (for attribute classification/prediction as part of multi-task learning).
+        loss (:obj:`torch.FloatTensor` of shape :obj:`(1,)`, `optional`, returned when :obj:`labels` is provided):
+            Language modeling loss (for next-token prediction).
         # logits (:obj:`torch.FloatTensor` of shape :obj:`(batch_size, sequence_length, config.vocab_size)`):
         #     Prediction scores of the language modeling head (scores for each vocabulary token before SoftMax).
         last_hidden_state (:obj:`torch.FloatTensor` of shape :obj:`(batch_size, sequence_length, hidden_size)`):
@@ -72,8 +70,7 @@ class EIHaRTOutput(ModelOutput):
         #     Hidden-states of the model at the output of extract layer.
     """
 
-    hulm_loss: Optional[torch.FloatTensor] = None
-    ac_loss: Optional[torch.FloatTensor] = None
+    loss: Optional[torch.FloatTensor] = None
     last_hidden_state: torch.FloatTensor = None
     history: torch.FloatTensor = None
     all_blocks_last_hidden_states: Optional[Tuple[torch.FloatTensor]] = None
