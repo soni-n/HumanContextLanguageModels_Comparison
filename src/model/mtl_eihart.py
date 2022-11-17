@@ -7,7 +7,7 @@ from src.modeling_outputs import EIHaRTOutput
 from transformers.activations import ACT2FN
 from transformers.modeling_outputs import SequenceClassifierOutputWithPast
 
-""" HaRT model pre-trained for the HuLM task """,
+""" EIHaRT model pre-trained for the HuLM task and an auxiliary task (Multi-task learning)  """,
 
 class HistoryMLP(nn.Module):
     def __init__(self, n_state, config):  # in history MLP: n_state=200
@@ -73,6 +73,28 @@ class MTL_EIHaRTPreTrainedModel(HaRTBasePreTrainedModel):
     
         return last_pred_token_hs, sequence_mask
 
+    def save_losses_debugging(self, hulm_loss, ac_loss, mtl_loss):
+        import pandas as pd
+
+        
+        try:
+            if hulm_loss.requires_grad:
+                losses = pd.read_csv('/home/nisoni/eihart/EIHaRT/outputs/debug/train_losses.csv')
+            else:
+                losses = pd.read_csv('/home/nisoni/eihart/EIHaRT/outputs/debug/eval_losses.csv')
+        except:
+            losses = pd.DataFrame(columns=['hulm', 'ac', 'mtl'])
+        
+        losses.loc[-1] = [float(hulm_loss), float(ac_loss), float(mtl_loss)]
+        losses.index += 1
+        losses = losses.sort_index()
+
+        if hulm_loss.requires_grad:
+            losses.to_csv('/home/nisoni/eihart/EIHaRT/outputs/debug/train_losses.csv', index=False)
+        else:
+            losses.to_csv('/home/nisoni/eihart/EIHaRT/outputs/debug/eval_losses.csv', index=False)
+
+
     def forward(
         self,
         input_ids=None,
@@ -103,12 +125,13 @@ class MTL_EIHaRTPreTrainedModel(HaRTBasePreTrainedModel):
         extract_layer = extract_layer if extract_layer else self.config.extract_layer
 
         usr_seq_len, blocks_len, block_size = input_ids.shape
+        batch_size = usr_seq_len
         batch_loss = torch.tensor(0.0).to(self.device)
         batch_len = 0
         all_blocks_last_hs = () if output_block_last_hidden_states else None
         all_blocks_history = ()
         all_blocks_attn_mask = ()
-        all_blocks_extract_layer_hs = ()
+        all_blocks_extract_layer_hs = () if output_block_extract_layer_hs else None
 
         for i in range(blocks_len):
             block_input_ids = input_ids[:,i,:]
@@ -162,13 +185,22 @@ class MTL_EIHaRTPreTrainedModel(HaRTBasePreTrainedModel):
 
         ac_loss, logits = self.attr_cls_head(input_ids, user_ids, labels=ac_labels, history=history_output, inputs_embeds=inputs_embeds)
 
+        mtl_loss = hulm_loss + ac_loss
+
+        self.save_losses_debugging(hulm_loss, ac_loss, mtl_loss)
+        
         if not return_dict:
             output = (last_block_last_hs, last_block_last_hs,) + arhulm_output[3:]
             return ((hulm_loss,) + output) if hulm_loss is not None else output
 
+        ## TODO: return ac_logits, mtl_loss only?
+        ## compute_metrics doesn't set prediction_loss_only to true --> that doesn't set
+        ## logits to None --> that causes an issue in concating logits.
         return EIHaRTOutput(
-            hulm_loss=hulm_loss,
-            ac_loss=ac_loss,
+            loss=mtl_loss,
+            logits=logits,
+            hulm_loss=hulm_loss.repeat(batch_size),
+            # ac_loss=ac_loss,
             last_hidden_state=last_block_last_hs,
             all_blocks_last_hidden_states = all_blocks_last_hs,
             all_blocks_extract_layer_hs = all_blocks_extract_layer_hs,
@@ -197,6 +229,7 @@ class MTL_EIHaRTPreTrainedModel(HaRTBasePreTrainedModel):
 class AttributeClassificationHead(nn.Module):
     # _keys_to_ignore_on_load_missing = [r"h\.\d+\.attn\.masked_bias", r"lm_head\.weight"]
 
+    ## fix code to generalize initialization
     def __init__(self, config):
         super().__init__()
         # self.freeze_model = config.freeze_model
@@ -301,7 +334,7 @@ class AttributeClassificationHead(nn.Module):
             if self.num_labels == 1:
                 #  We are doing regression
                 loss_fct = MSELoss()
-                loss = loss_fct(pooled_logits.view(-1), labels.to(self.dtype).view(-1))
+                loss = loss_fct(pooled_logits.view(-1), labels.to(torch.float32).view(-1)) ## fix code for dtype when generalizing
             else:
                 raise ValueError("The user-level auxiliary task should perform regression (?).")
                 # labels = labels.long()

@@ -15,6 +15,10 @@ class EIHaRTOutput(ModelOutput):
     Base class for Auto regressive Human language model outputs.
 
     Args:
+        loss (:obj:`torch.FloatTensor` of shape :obj:`(1,)`, `optional`, returned when :obj:`labels` is provided):
+            Multi-task learning loss (for HuLM and attribute prediction).
+        logits (:obj:`torch.FloatTensor` of shape :obj:`(batch_size, config.num_labels)`):
+            Classification (or regression if config.num_labels==1) scores (before SoftMax).
         hulm_loss (:obj:`torch.FloatTensor` of shape :obj:`(1,)`, `optional`, returned when :obj:`labels` is provided):
             Human Language modeling loss (for next-token prediction given user state and previous tokens).
         ac_loss (:obj:`torch.FloatTensor` of shape :obj:`(1,)`, `optional`, returned when :obj:`labels` is provided):
@@ -72,6 +76,8 @@ class EIHaRTOutput(ModelOutput):
         #     Hidden-states of the model at the output of extract layer.
     """
 
+    loss: Optional[torch.FloatTensor] = None
+    logits: torch.FloatTensor = None
     hulm_loss: Optional[torch.FloatTensor] = None
     ac_loss: Optional[torch.FloatTensor] = None
     last_hidden_state: torch.FloatTensor = None

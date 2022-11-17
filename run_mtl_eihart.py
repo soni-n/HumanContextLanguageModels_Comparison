@@ -35,13 +35,16 @@ from transformers import (
     AutoConfig,
     AutoModelForCausalLM,
     AutoTokenizer,
+    EvalPrediction,
     HfArgumentParser,
-    Trainer,
+    # Trainer,
     TrainingArguments,
     set_seed,
     TrainerCallback,
 )
 from transformers.trainer_utils import get_last_checkpoint, is_main_process
+
+from HFtrainer_v451_for_reference.trainer import Trainer
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +53,8 @@ class evalLogsCallback(TrainerCallback):
     def on_evaluate(self, args, state, control, **kwargs):
         if control.should_save:
             metrics = kwargs['metrics']
-            perplexity = math.exp(metrics["eval_loss"])
-            metrics["perplexity"] = perplexity
+            # perplexity = math.exp(metrics["eval_loss"])
+            # metrics["perplexity"] = perplexity
             self.save_metrics('eval_{}'.format(metrics['epoch']), metrics, args)
 
     def save_metrics(self, split, metrics, args):
@@ -227,9 +230,54 @@ def main():
     train_dataset = train_data if training_args.do_train else None
     eval_dataset = eval_data
 
+    def compute_metrics(p: EvalPrediction):
+        import numpy as np
+        from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+        import scipy
+
+        hulm_loss = p.predictions[1].mean().item()
+        preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
+        preds = np.squeeze(preds) #if is_regression else np.argmax(preds, axis=-1)
+
+        if True: # or is_regression:
+            if data_args.save_preds_labels:
+                np.savetxt(training_args.output_dir +'/preds.txt', preds)
+                np.savetxt(training_args.output_dir + '/labels.txt', p.label_ids)
+            mse = ((preds - p.label_ids) ** 2).mean().item()
+            r_pear, p_value = scipy.stats.pearsonr(preds, p.label_ids)
+            # from https://www.aclweb.org/anthology/W18-0604.pdf 
+            r_meas1 = 0.77
+            r_meas2 = 0.70
+            r_dis = r_pear/((r_meas1*r_meas2)**0.5)
+
+            return {
+                'mse': mse,
+                'r_dis': r_dis,
+                'r_pear': r_pear,
+                'p_value': p_value,
+                'hulm_loss': hulm_loss,
+                'perplexity_hulm': math.exp(hulm_loss),
+                }
+        else:
+            indices = p.label_ids!=-100 # make sure to ignore the labels marked as -100
+            labels = p.label_ids[indices]
+            if not model_args.use_hart_no_hist:
+                preds = preds[indices]
+            if data_args.save_preds_labels:
+                np.savetxt(training_args.output_dir +'/preds.txt', preds, fmt='%d')
+                np.savetxt(training_args.output_dir + '/labels.txt', labels, fmt='%d')
+            precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average='weighted')
+            acc = accuracy_score(labels, preds)
+            return {
+                'accuracy': acc,
+                'f1': f1,
+                'precision': precision,
+                'recall': recall
+            }
+
     # Data collator
     # This will take care of collating batches of type [users, windows, num_tokens]
-    data_collator = DataCollatorWithPaddingForHaRT(model_args, config, tokenizer, training_args.deepspeed)
+    data_collator = DataCollatorWithPaddingForHaRT(model_args, config, tokenizer, training_args.deepspeed, is_user_level_ft=True) ## fix is_user_level_ft to generalize
     
     # Initialize our Trainer
     trainer = Trainer(
@@ -237,6 +285,7 @@ def main():
         args=training_args,
         train_dataset=train_dataset if training_args.do_train else None, 
         eval_dataset=eval_dataset if training_args.do_eval or training_args.do_predict else None,
+        compute_metrics=compute_metrics,
         tokenizer=tokenizer,
         data_collator=data_collator,
         callbacks=[evalLogsCallback] if training_args.do_train else None
@@ -285,8 +334,8 @@ def main():
 
         max_val_samples = data_args.max_val_samples if data_args.max_val_samples is not None else len(eval_dataset)
         metrics["eval_samples"] = min(max_val_samples, len(eval_dataset))
-        perplexity = math.exp(metrics["eval_loss"])
-        metrics["perplexity"] = perplexity
+        # perplexity = math.exp(metrics["eval_loss"])
+        # metrics["perplexity"] = perplexity
         metrics["eval_blocks_per_sample"] = eval_uncut_blocks if data_args.max_val_blocks is None else min(data_args.max_val_blocks, eval_uncut_blocks) 
         metrics["per_device_eval_batch_size"] = training_args.per_device_eval_batch_size
         metrics["is_dev"] = True if data_args.dev_table else False
@@ -305,15 +354,15 @@ def main():
 
         max_val_samples = data_args.max_val_samples if data_args.max_val_samples is not None else len(eval_dataset)
         metrics["eval_samples"] = min(max_val_samples, len(eval_dataset))
-        perplexity = math.exp(metrics["eval_loss"])
-        metrics["perplexity"] = perplexity
+        # perplexity = math.exp(metrics["eval_loss"])
+        # metrics["perplexity"] = perplexity
         metrics["eval_blocks_per_sample"] = eval_uncut_blocks if data_args.max_val_blocks is None else min(data_args.max_val_blocks, eval_uncut_blocks) 
         metrics["per_device_eval_batch_size"] = training_args.per_device_eval_batch_size
         metrics["is_dev"] = False
         metrics["eval_table"] = data_args.test_table
 
-        trainer.log_metrics("eval", metrics)
-        trainer.save_metrics("eval", metrics)
+        trainer.log_metrics("eval_predict", metrics)
+        trainer.save_metrics("eval_predict", metrics)
 
 
 def _mp_fn(index):

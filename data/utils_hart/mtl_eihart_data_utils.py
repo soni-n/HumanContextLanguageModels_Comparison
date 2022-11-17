@@ -16,7 +16,7 @@ def get_fields():
 
 def get_conn(data_args):
     myDB = URL(drivername='mysql', host=data_args.hostname,
-                database=data_args.db, query={'read_default_file': '~/.my.cnf', 'charset': 'utf8mb4'})
+                database=data_args.db, query={'read_default_file': '~/.my.cnf1', 'charset': 'utf8mb4'})
     engine = create_engine(myDB, encoding='latin1')
     conn = engine.connect()
     return conn
@@ -214,7 +214,7 @@ def group_data(data, max_blocks, logger):
     assert len(data)==len(batch)
     data = pd.concat((data[[user_id_column, ac_label_column]], batch), axis=1)
     assert data.shape[-1]==batch.shape[-1] + 2
-    return data[:10].to_numpy().tolist(), actual_blocks # fix code: remove the limit 
+    return data[:5].to_numpy().tolist(), actual_blocks # fix code: remove the limit 
 
 def load_dataset(logger, tokenizer, table, block_size, max_blocks, data_args, data_type, disable_hulm_batching):
     fields = get_fields()

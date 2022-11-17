@@ -121,6 +121,9 @@ class DataTrainingArguments:
             "help": "Number of classification labels for the auxiliary task for EIHaRT's mult-task learning."
         },
     )
+    save_preds_labels: bool = field(
+        default=False, metadata={"help": "Should save the predictions and labels into text files or not."}
+    )
     db: Optional[str] = field(
         default=None,
         metadata={"help": "The database where input training data table resides. (a mysql database)."})
