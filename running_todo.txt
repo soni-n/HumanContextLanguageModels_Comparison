@@ -52,3 +52,13 @@ continue with editing the select query (user_dataset_id; and source_not_included
 V) /users/nisoni/eihart/EIHaRT/data/utils_hart/mtl_eihart_data_utils.py
 
 fix the comments
+
+VI) mtl_data_utils:
+is_oosuser_dev (for fb table -- check if need to switch to is_oosusr_dev)
+is_oosuser_test  (same as above)
+
+generalize code for debugging to use 5/10 instances (line 220)
+
+mtl_eihart.py:
+hard coded debug location to save losses (fix that or remove it?)
+

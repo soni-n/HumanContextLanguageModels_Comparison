@@ -37,14 +37,14 @@ from transformers import (
     AutoTokenizer,
     EvalPrediction,
     HfArgumentParser,
-    # Trainer,
+    Trainer,
     TrainingArguments,
     set_seed,
     TrainerCallback,
 )
 from transformers.trainer_utils import get_last_checkpoint, is_main_process
 
-from HFtrainer_v451_for_reference.trainer import Trainer
+# from HFtrainer_v451_for_reference.trainer import Trainer
 
 logger = logging.getLogger(__name__)
 
@@ -147,8 +147,10 @@ def main():
         config.use_qh05_wts = False
 
     ## genralize this into initialization?
+    print("Sum*****")
     config.ac_task = data_args.ac_task_name
     config.ac_num_labels = 1
+    config.keys_to_ignore_at_inference += ["history", "last_hidden_state"]
 
     tokenizer_kwargs = {
         "cache_dir": model_args.cache_dir,
@@ -236,6 +238,7 @@ def main():
         import scipy
 
         hulm_loss = p.predictions[1].mean().item()
+        ac_loss = p.predictions[2].mean().item()
         preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
         preds = np.squeeze(preds) #if is_regression else np.argmax(preds, axis=-1)
 
@@ -256,6 +259,7 @@ def main():
                 'r_pear': r_pear,
                 'p_value': p_value,
                 'hulm_loss': hulm_loss,
+                'ac_loss': ac_loss,
                 'perplexity_hulm': math.exp(hulm_loss),
                 }
         else:
@@ -278,6 +282,7 @@ def main():
     # Data collator
     # This will take care of collating batches of type [users, windows, num_tokens]
     data_collator = DataCollatorWithPaddingForHaRT(model_args, config, tokenizer, training_args.deepspeed, is_user_level_ft=True) ## fix is_user_level_ft to generalize
+    # data_collator = DataCollatorWithPaddingForHaRT(model_args, config, tokenizer, training_args.deepspeed) ## for debugging
     
     # Initialize our Trainer
     trainer = Trainer(

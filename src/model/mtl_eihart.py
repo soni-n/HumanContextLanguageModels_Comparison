@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.nn import MSELoss
 
 from src.model.modeling_hart import HaRTBasePreTrainedModel, HaRTBaseLMHeadModel
-from src.modeling_outputs import EIHaRTOutput
+from src.modeling_outputs_eihart import EIHaRTOutput
 from transformers.activations import ACT2FN
 from transformers.modeling_outputs import SequenceClassifierOutputWithPast
 
@@ -53,6 +53,13 @@ class MTL_EIHaRTPreTrainedModel(HaRTBasePreTrainedModel):
             self.history_mlp = HistoryMLP(inner_dim, config)
 
         self.attr_cls_head = AttributeClassificationHead(config)
+        
+        self.scale = nn.Parameter(torch.FloatTensor(2)) # one for each task
+        self.scale.data.normal_(mean=0.0, std=self.config.initializer_range)
+        
+        # self.scale = nn.Linear(2, 2, bias=False) # one for each task
+        # self.scale.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
+        
         # Model parallel
         self.model_parallel = False
         self.device_map = None
@@ -79,9 +86,9 @@ class MTL_EIHaRTPreTrainedModel(HaRTBasePreTrainedModel):
         
         try:
             if hulm_loss.requires_grad:
-                losses = pd.read_csv('/home/nisoni/eihart/EIHaRT/outputs/debug/train_losses.csv')
+                losses = pd.read_csv('/home/nisoni/eihart/EIHaRT/output/debug/normScale_train_age10.csv')
             else:
-                losses = pd.read_csv('/home/nisoni/eihart/EIHaRT/outputs/debug/eval_losses.csv')
+                losses = pd.read_csv('/home/nisoni/eihart/EIHaRT/output/debug/normScale_eval_age10.csv')
         except:
             losses = pd.DataFrame(columns=['hulm', 'ac', 'mtl'])
         
@@ -90,9 +97,9 @@ class MTL_EIHaRTPreTrainedModel(HaRTBasePreTrainedModel):
         losses = losses.sort_index()
 
         if hulm_loss.requires_grad:
-            losses.to_csv('/home/nisoni/eihart/EIHaRT/outputs/debug/train_losses.csv', index=False)
+            losses.to_csv('/home/nisoni/eihart/EIHaRT/output/debug/normScaleSqrtSq_train_age10.csv', index=False)
         else:
-            losses.to_csv('/home/nisoni/eihart/EIHaRT/outputs/debug/eval_losses.csv', index=False)
+            losses.to_csv('/home/nisoni/eihart/EIHaRT/output/debug/normScaleSqrtSq_eval_age10.csv', index=False)
 
 
     def forward(
@@ -185,9 +192,58 @@ class MTL_EIHaRTPreTrainedModel(HaRTBasePreTrainedModel):
 
         ac_loss, logits = self.attr_cls_head(input_ids, user_ids, labels=ac_labels, history=history_output, inputs_embeds=inputs_embeds)
 
-        mtl_loss = hulm_loss + ac_loss
+        hulm_ppl_loss = hulm_loss 
+        # self.save_losses_debugging(hulm_loss, ac_loss, 0)
 
-        self.save_losses_debugging(hulm_loss, ac_loss, mtl_loss)
+        # exp/log trick
+        # hulm_loss = torch.log(hulm_loss)
+        # ac_loss =  torch.log(ac_loss)
+        # mtl_loss = torch.exp(hulm_loss + ac_loss) 
+
+        # scaling
+        # hulm_loss = self.scale[0] * hulm_loss
+        # ac_loss =  self.scale[1] * ac_loss
+        # mtl_loss = hulm_loss + ac_loss
+
+        # scaling (squared for positive scale)
+        # hulm_loss = self.scale[0] * self.scale[0] * hulm_loss
+        # ac_loss =  self.scale[1] * self.scale[1] * ac_loss
+        # mtl_loss = (hulm_loss + ac_loss) ** 1/2
+
+        # scaling (sqrt of squared for positive scale and bringing down to regular scale)
+        # hulm_loss = ((self.scale[0] * self.scale[0]) ** 1/2) * hulm_loss
+        # ac_loss =  ((self.scale[1] * self.scale[1]) ** 1/2) * ac_loss
+        # mtl_loss = hulm_loss + ac_loss
+
+        # # homoscedastic loss
+        # hulm_log_var = torch.log(self.scale[0] * self.scale[0])
+        # ac_log_var = torch.log(self.scale[1] * self.scale[1])
+        # hulm_loss = ((torch.exp(-hulm_log_var) * hulm_loss) + hulm_log_var)/2
+        # ac_loss =  ((torch.exp(-ac_log_var) * ac_loss) + ac_log_var)/2
+        # mtl_loss = hulm_loss + ac_loss
+
+        # # homoscedastic loss (for CE and MSE)
+        # hulm_log_var = torch.log(self.scale[0] * self.scale[0])
+        # ac_log_var = torch.log(self.scale[1] * self.scale[1])
+        # hulm_loss = ((torch.exp(-hulm_log_var) * hulm_loss) + hulm_log_var)
+        # ac_loss =  ((torch.exp(-ac_log_var) * ac_loss) + ac_log_var)/2
+        # mtl_loss = hulm_loss + ac_loss
+
+        # # homoscedastic loss (scale parameter as variance)
+        # hulm_log_var = torch.log(self.scale[0])
+        # ac_log_var = torch.log(self.scale[1])
+        # hulm_loss = ((torch.exp(-hulm_log_var) * hulm_loss) + hulm_log_var)/2
+        # ac_loss =  ((torch.exp(-ac_log_var) * ac_loss) + ac_log_var)/2
+        # mtl_loss = hulm_loss + ac_loss
+
+        # linear transformation (equivalent to scaling; so redundant and ignored)
+        # hulm_loss, ac_loss = self.scale([hulm_loss, ac_loss])
+        # mtl_loss = hulm_loss + ac_loss
+
+        # simple summing up losses
+        mtl_loss = hulm_loss + ac_loss 
+        
+        # mtl_loss = hulm_loss
         
         if not return_dict:
             output = (last_block_last_hs, last_block_last_hs,) + arhulm_output[3:]
@@ -199,8 +255,8 @@ class MTL_EIHaRTPreTrainedModel(HaRTBasePreTrainedModel):
         return EIHaRTOutput(
             loss=mtl_loss,
             logits=logits,
-            hulm_loss=hulm_loss.repeat(batch_size),
-            # ac_loss=ac_loss,
+            hulm_loss=hulm_ppl_loss.repeat(batch_size),
+            ac_loss=ac_loss.repeat(batch_size),
             last_hidden_state=last_block_last_hs,
             all_blocks_last_hidden_states = all_blocks_last_hs,
             all_blocks_extract_layer_hs = all_blocks_extract_layer_hs,

@@ -16,7 +16,7 @@ def get_fields():
 
 def get_conn(data_args):
     myDB = URL(drivername='mysql', host=data_args.hostname,
-                database=data_args.db, query={'read_default_file': '~/.my.cnf1', 'charset': 'utf8mb4'})
+                database=data_args.db, query={'read_default_file': '~/.my.cnf3', 'charset': 'utf8mb4'})
     engine = create_engine(myDB, encoding='latin1')
     conn = engine.connect()
     return conn
@@ -38,10 +38,15 @@ def get_data_from_db(logger, table, data_args, data_type, ac_label_field):
 
     if data_type=='train': 
         if "en_non_oosmsgs" in table:      
-            dev_filter_column = 'is_oosusr_dev'
-            test_filter_column = 'is_oosusr_test'
-            where_clause = ' where ' + source_filter_column + 'not in (' + source_not_included + ') and ' + dev_filter_column + '=0' + ' and ' + test_filter_column + '=0'
+            dev_filter_column = 'is_oosuser_dev'
+            test_filter_column = 'is_oosuser_test'
+            ## uncomment for final code
+            # where_clause = ' where ' + source_filter_column + 'not in (' + source_not_included + ') and ' + dev_filter_column + '=0' + ' and ' + test_filter_column + '=0'
+            
+            
+            where_clause = ' where ' + dev_filter_column + ' is NULL' + ' and ' + test_filter_column + '=0'
             stmt = select_clause + where_clause + order_clause + limit_clause
+            print(stmt)
         else:
             ## uncomment for final code
             # where_clause = ' where ' + source_filter_column + 'not in (' + source_not_included + ')'
@@ -51,8 +56,9 @@ def get_data_from_db(logger, table, data_args, data_type, ac_label_field):
         results = conn.execute(stmt)
     elif data_type=='dev':
         if 'en_non_oosmsgs' in table:      
-            filter_column = 'is_oosusr_dev'
-            where_clause = ' where ' + source_filter_column + 'not in (' + source_not_included + ') and ' + filter_column + '=1'
+            filter_column = 'is_oosuser_dev'
+            # where_clause = ' where ' + source_filter_column + 'not in (' + source_not_included + ') and ' + filter_column + '=1'
+            where_clause = ' where ' + filter_column + '=1'
             stmt = select_clause + where_clause + order_clause + limit_clause
         elif 'en_oosmsgs' in table:      
             filter_column = 'is_oosmsg_dev'
@@ -64,8 +70,9 @@ def get_data_from_db(logger, table, data_args, data_type, ac_label_field):
         results = conn.execute(stmt)
     elif data_type=='test':
         if 'en_non_oosmsgs' in table:      
-            filter_column = 'is_oosusr_test'
-            where_clause = ' where ' + source_filter_column + 'not in (' + source_not_included + ') and ' + filter_column + '=1'
+            filter_column = 'is_oosuser_test'
+            # where_clause = ' where ' + source_filter_column + 'not in (' + source_not_included + ') and ' + filter_column + '=1'
+            where_clause = ' where ' + filter_column + '=1'
             stmt = select_clause + where_clause + order_clause + limit_clause
         elif 'en_oosmsgs' in table:      
             filter_column = 'is_oosmsg_test'
@@ -204,7 +211,7 @@ def join_data_and_ac_labels(data, labels):
     assert merged_data.shape[-1]==4
     return merged_data
 
-def group_data(data, max_blocks, logger):
+def group_data(data, max_blocks, data_type, logger):
     batch = pd.DataFrame(data.batch_encodings.tolist())
     actual_blocks = len(batch.columns)
     logger.info('************** Total Number of blocks = {} *************'.format(len(batch.columns)))
@@ -214,11 +221,14 @@ def group_data(data, max_blocks, logger):
     assert len(data)==len(batch)
     data = pd.concat((data[[user_id_column, ac_label_column]], batch), axis=1)
     assert data.shape[-1]==batch.shape[-1] + 2
-    return data[:5].to_numpy().tolist(), actual_blocks # fix code: remove the limit 
+    if data_type=='dev' or data_type=='test':
+        # return data[:1000].to_numpy().tolist(), actual_blocks # fix code: remove the limit 
+        return data.to_numpy().tolist(), actual_blocks
+    return data.to_numpy().tolist(), actual_blocks # fix code: remove the limit 
 
 def load_dataset(logger, tokenizer, table, block_size, max_blocks, data_args, data_type, disable_hulm_batching):
     fields = get_fields()
-    ac_label_field = data_args.ac_task_name
+    ac_label_field = 'age' # data_args.ac_task_name
     if 'pkl' in table:
         data = get_data_from_pkl(logger, table, fields, data_type)
     elif 'csv' in table:
@@ -229,9 +239,9 @@ def load_dataset(logger, tokenizer, table, block_size, max_blocks, data_args, da
     data = join_data_and_ac_labels(data, ac_labels)
     logger.info('************** Block size = {} *************'.format(block_size))
     if not disable_hulm_batching:
-        return group_data(data, max_blocks, logger) 
+        return group_data(data, max_blocks, data_type, logger) 
     else:
-        instances, uncut_num_blocks = group_data(data, max_blocks, logger)
+        instances, uncut_num_blocks = group_data(data, max_blocks, data_type, logger)
         flat_list = [item for sublist in instances for item in sublist if item is not None]
         return flat_list, uncut_num_blocks
 
