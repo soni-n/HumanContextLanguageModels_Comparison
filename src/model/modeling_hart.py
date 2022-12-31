@@ -34,7 +34,7 @@ from transformers.utils import logging
 from transformers.utils.model_parallel_utils import assert_device_map, get_device_map
 
 from src.model.configuration_hart import HaRTConfig
-from src.modeling_outputs import (
+from src.modeling_outputs_eihart import (
     HaRTBaseModelOutput,
     HaRTBaseCausalLMOutput,
 )
