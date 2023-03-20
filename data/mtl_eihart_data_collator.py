@@ -1,9 +1,74 @@
 import torch
-from typing import Dict, List
+from typing import Dict, List, Union, Optional
 
 from dataclasses import dataclass
 from transformers import BatchEncoding
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
+
+### Refactor 
+@dataclass
+class DataCollatorWithPaddingForSeqCls:
+    """
+    Data collator that will dynamically pad the inputs received.
+
+    Args:
+        tokenizer (:class:`~transformers.PreTrainedTokenizer` or :class:`~transformers.PreTrainedTokenizerFast`):
+            The tokenizer used for encoding the data.
+        padding (:obj:`bool`, :obj:`str` or :class:`~transformers.file_utils.PaddingStrategy`, `optional`, defaults to :obj:`True`):
+            Select a strategy to pad the returned sequences (according to the model's padding side and padding index)
+            among:
+
+            * :obj:`True` or :obj:`'longest'`: Pad to the longest sequence in the batch (or no padding if only a single
+              sequence if provided).
+            * :obj:`'max_length'`: Pad to a maximum length specified with the argument :obj:`max_length` or to the
+              maximum acceptable input length for the model if that argument is not provided.
+            * :obj:`False` or :obj:`'do_not_pad'` (default): No padding (i.e., can output a batch with sequences of
+              different lengths).
+        max_length (:obj:`int`, `optional`):
+            Maximum length of the returned list and optionally padding length (see above).
+        pad_to_multiple_of (:obj:`int`, `optional`):
+            If set will pad the sequence to a multiple of the provided value.
+
+            This is especially useful to enable the use of Tensor Cores on NVIDIA hardware with compute capability >=
+            7.5 (Volta).
+    """
+
+    tokenizer: PreTrainedTokenizerBase
+    initial_history: str
+    # padding: Union[bool, str, PaddingStrategy] = True
+    padding: Union[bool, str] = True
+    max_length: Optional[int] = None
+    pad_to_multiple_of: Optional[int] = None
+    
+    def __call__(self, features: List[Dict[str, Union[List[int], torch.Tensor]]]) -> Dict[str, torch.Tensor]:
+        batch = self.tokenizer.pad(
+            features,
+            padding=self.padding,
+            max_length=self.max_length,
+            pad_to_multiple_of=self.pad_to_multiple_of,
+            return_tensors="pt",
+        )
+        if "label" in batch:
+            batch["labels"] = batch["label"]
+            del batch["label"]
+        if "label_ids" in batch:
+            batch["labels"] = batch["label_ids"]
+            del batch["label_ids"]
+        
+        batch = {k:torch.unsqueeze(v, 1) for k,v in batch.items()}
+
+        # TODO: move history initialization to init OR refactor it here: REFER HaRT code!!
+        history = torch.load(self.initial_history) #if initial_history else (torch.zeros(config.n_embd))
+        # history = self.history.to(torch.float16) if deepspeed else self.history.float() 
+        history = history.float() 
+        
+        # repeat history for each user, i.e., len(batch['input_ids']) or len(features) or batch['input_ids'].shape[0],
+        # and for each token, i.e., len(features[0]['input_ids']) + 1 (eos token), or batch['input_ids'].shape[-1],
+        batch['history'] = history.repeat(batch['input_ids'].shape[0], batch['input_ids'].shape[-1], 1)
+        
+        return batch
+
+
 
 @dataclass
 class DataCollatorWithPaddingForHaRT:

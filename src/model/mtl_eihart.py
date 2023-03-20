@@ -240,10 +240,11 @@ class MTL_EIHaRTPreTrainedModel(HaRTBasePreTrainedModel):
         # hulm_loss, ac_loss = self.scale([hulm_loss, ac_loss])
         # mtl_loss = hulm_loss + ac_loss
 
-        # simple summing up losses
-        mtl_loss = hulm_loss + ac_loss 
+        # # simple summing up losses
+        # mtl_loss = hulm_loss + ac_loss 
         
-        # mtl_loss = hulm_loss
+        # TODO: only for debugging mode
+        mtl_loss = hulm_loss
         
         if not return_dict:
             output = (last_block_last_hs, last_block_last_hs,) + arhulm_output[3:]
@@ -255,8 +256,8 @@ class MTL_EIHaRTPreTrainedModel(HaRTBasePreTrainedModel):
         return EIHaRTOutput(
             loss=mtl_loss,
             logits=logits,
-            hulm_loss=hulm_ppl_loss.repeat(batch_size),
-            ac_loss=ac_loss.repeat(batch_size),
+            hulm_loss=hulm_ppl_loss.repeat(batch_size) if labels is not None else None, #TODO: tentative labels condition added -- refactor, i guess?!
+            ac_loss=ac_loss.repeat(batch_size) if labels is not None else None,  #TODO: tentative labels condition added -- refactor, i guess?!
             last_hidden_state=last_block_last_hs,
             all_blocks_last_hidden_states = all_blocks_last_hs,
             all_blocks_extract_layer_hs = all_blocks_extract_layer_hs,

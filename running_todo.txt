@@ -62,3 +62,7 @@ generalize code for debugging to use 5/10 instances (line 220)
 mtl_eihart.py:
 hard coded debug location to save losses (fix that or remove it?)
 
+VII) data_collator: /home/nisoni/eihart/EIHaRT/data/mtl_eihart_data_collator.py
+fix history initialization (TODO listed in code)
+
+VIII) /home/nisoni/eihart/EIHaRT/src/model/mtl_eihart.py -- forward to be refactored with choices!?

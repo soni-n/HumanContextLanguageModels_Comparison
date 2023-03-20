@@ -5,7 +5,7 @@ from torch.nn import CrossEntropyLoss, MSELoss
 from transformers.modeling_outputs import SequenceClassifierOutputWithPast
 
 from .modeling_hart import HaRTBasePreTrainedModel
-from .hart import HaRTPreTrainedModel
+from .mtl_eihart import MTL_EIHaRTPreTrainedModel
 
 class HaRTForSequenceClassification(HaRTBasePreTrainedModel):
     # _keys_to_ignore_on_load_missing = [r"h\.\d+\.attn\.masked_bias", r"lm_head\.weight"]
@@ -18,11 +18,11 @@ class HaRTForSequenceClassification(HaRTBasePreTrainedModel):
         self.use_history_output = config.use_history_output
         self.use_hart_no_hist = config.use_hart_no_hist
         if model_name_or_path:
-            self.transformer = HaRTPreTrainedModel.from_pretrained(model_name_or_path)
+            self.transformer = MTL_EIHaRTPreTrainedModel.from_pretrained(model_name_or_path)
         elif pt_model:
             self.transformer = pt_model
         else:
-            self.transformer = HaRTPreTrainedModel(config)
+            self.transformer = MTL_EIHaRTPreTrainedModel(config)
             self.init_weights()
         
         if not self.freeze_model and not self.finetuning_task=='ope' and not self.finetuning_task=='user':
@@ -111,35 +111,41 @@ class HaRTForSequenceClassification(HaRTBasePreTrainedModel):
 
         all_blocks_last_hidden_states = transformer_outputs.all_blocks_extract_layer_hs if self.freeze_model else transformer_outputs.all_blocks_last_hidden_states 
         
-        if self.finetuning_task=='user' or self.finetuning_task=='ope' or self.finetuning_task=='age':
-            if self.use_history_output:
-                states = transformer_outputs.history[0]
-                masks = transformer_outputs.history[1]
-                multiplied = tuple(l * r for l, r in zip(states, masks))
-                all_blocks_user_states = torch.stack(multiplied, dim=1)
-                all_blocks_masks = torch.stack(masks, dim=1)
-                sum = torch.sum(all_blocks_user_states, dim=1)
-                divisor = torch.sum(all_blocks_masks, dim=1)
-                hidden_states = sum/divisor
-            else:
-                raise ValueError("Since you don't want to use the user-states/history output for a user-level task, please customize the code as per your requirements.")
-        else:
-            hidden_states = torch.stack(all_blocks_last_hidden_states, dim=1)
+        # if self.finetuning_task=='user' or self.finetuning_task=='ope' or self.finetuning_task=='age':
+        #     if self.use_history_output:
+        #         states = transformer_outputs.history[0]
+        #         masks = transformer_outputs.history[1]
+        #         multiplied = tuple(l * r for l, r in zip(states, masks))
+        #         all_blocks_user_states = torch.stack(multiplied, dim=1)
+        #         all_blocks_masks = torch.stack(masks, dim=1)
+        #         sum = torch.sum(all_blocks_user_states, dim=1)
+        #         divisor = torch.sum(all_blocks_masks, dim=1)
+        #         hidden_states = sum/divisor
+        #     else:
+        #         raise ValueError("Since you don't want to use the user-states/history output for a user-level task, please customize the code as per your requirements.")
+        # else:
+        #     hidden_states = torch.stack(all_blocks_last_hidden_states, dim=1)
        
-        if self.use_hart_no_hist:
-            logits = self.score(all_blocks_last_hidden_states[0]) if self.freeze_model else self.score(self.ln_f(all_blocks_last_hidden_states[0]))
-            batch_size, _, sequence_length = input_ids.shape
-            sequence_lengths = torch.ne(input_ids, self.config.pad_token_id).sum(-1) - 1
-            pooled_logits = logits[range(batch_size), sequence_lengths.squeeze()]
-        else:
-            if self.finetuning_task=='ope' or self.finetuning_task=='user' or self.freeze_model:
-                logits = self.score(hidden_states) 
-            elif self.finetuning_task=='age':
-                self.score(self.transform(self.ln_f(hidden_states)))
-            else:
-                logits = self.score(self.ln_f(hidden_states))
-            pooled_logits = logits if (user_ids is None or self.use_history_output) else \
-                        self.get_pooled_logits(logits, input_ids, inputs_embeds)
+        # if self.use_hart_no_hist:
+        #     logits = self.score(all_blocks_last_hidden_states[0]) if self.freeze_model else self.score(self.ln_f(all_blocks_last_hidden_states[0]))
+        #     batch_size, _, sequence_length = input_ids.shape
+        #     sequence_lengths = torch.ne(input_ids, self.config.pad_token_id).sum(-1) - 1
+        #     pooled_logits = logits[range(batch_size), sequence_lengths.squeeze()]
+        # else:
+        #     if self.finetuning_task=='ope' or self.finetuning_task=='user' or self.freeze_model:
+        #         logits = self.score(hidden_states) 
+        #     elif self.finetuning_task=='age':
+        #         self.score(self.transform(self.ln_f(hidden_states)))
+        #     else:
+        #         logits = self.score(self.ln_f(hidden_states))
+        #     pooled_logits = logits if (user_ids is None or self.use_history_output) else \
+        #                 self.get_pooled_logits(logits, input_ids, inputs_embeds)
+
+        ## refactor!!
+        hidden_states = torch.stack(all_blocks_last_hidden_states, dim=1)
+        hidden_states = hidden_states.squeeze()
+        logits = self.score(self.ln_f(hidden_states))
+        pooled_logits = self.get_pooled_logits(logits, input_ids, inputs_embeds)
 
         loss = None
         if labels is not None:
@@ -148,6 +154,7 @@ class HaRTForSequenceClassification(HaRTBasePreTrainedModel):
                 loss_fct = MSELoss()
                 loss = loss_fct(pooled_logits.view(-1), labels.to(self.dtype).view(-1))
             else:
+                # print(f"**************** FT num_labels = {self.num_labels}***************")
                 labels = labels.long()
                 loss_fct = CrossEntropyLoss()
                 loss = loss_fct(pooled_logits.view(-1, self.num_labels), labels.view(-1))
