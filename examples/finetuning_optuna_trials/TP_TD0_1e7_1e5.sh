@@ -1,5 +1,5 @@
 echo $@
-CUDA_VISIBLE_DEVICES=2 \
+CUDA_VISIBLE_DEVICES=3 \
 python -O /home/nisoni/eihart/EIHaRT/optuna_trials/run_ft_eihart_trials.py \
     --search_params \
     --use_optuna \
@@ -17,12 +17,12 @@ python -O /home/nisoni/eihart/EIHaRT/optuna_trials/run_ft_eihart_trials.py \
     --do_train \
     --do_eval \
     --do_predict \
-    --num_train_epochs 30 \
+    --num_train_epochs 20 \
     --per_device_train_batch_size 32 \
     --per_device_eval_batch_size 32 \
-    --block_size 100 \
+    --block_size 128 \
     --max_train_blocks 8 \
-    --output_dir /chronos_data/nisoni/eihart_outputs/TP_FT/TD0_5e3_5e5_bs32_30ep_100bls \
+    --output_dir /chronos_data/nisoni/eihart_outputs/TP_FT/TD0_1e7_1e5_1gpu \
     --add_history \
     --initial_history /home/nisoni/eihart/EIHaRT/initial_history/initialized_history_tensor.pt \
     --hostname localhost \

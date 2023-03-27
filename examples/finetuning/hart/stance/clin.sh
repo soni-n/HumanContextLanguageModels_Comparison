@@ -1,10 +1,10 @@
 echo $@
-CUDA_VISIBLE_DEVICES=$1 \
-python -O HaRT/run_ft_hart.py \
+CUDA_VISIBLE_DEVICES=3 \
+python -O EIHaRT/run_ft_hart.py \
     --learning_rate 6.577923654764376e-05 \
     --early_stopping_patience 6 \
     --weight_decay 0.01 \
-    --model_name_or_path $2 \
+    --model_name_or_path /home/nisoni/eihart/final8epoch_pt_model/checkpoint-227720 \
     --task_type document \
     --task_name stance \
     --num_labels 3 \
@@ -22,12 +22,12 @@ python -O HaRT/run_ft_hart.py \
     --per_device_eval_batch_size 20 \
     --block_size 1024 \
     --max_train_blocks 8 \
-    --output_dir $3 \
+    --output_dir /chronos_data/nisoni/eihart_outputs/Doc_FT/stance/clin \
     --add_history \
-    --initial_history HaRT/initial_history/initialized_history_tensor.pt \
-    --train_table HaRT/data/datasets/stance/clin_train_all.pkl \
-    --dev_table HaRT/data/datasets/stance/clin_dev_all.pkl \
-    --test_table HaRT/data/datasets/stance/clin_test_all.pkl \
+    --initial_history EIHaRT/initial_history/initialized_history_tensor.pt \
+    --train_table EIHaRT/data/datasets/stance/clin_train_all.pkl \
+    --dev_table EIHaRT/data/datasets/stance/clin_dev_all.pkl \
+    --test_table EIHaRT/data/datasets/stance/clin_test_all.pkl \
     # --overwrite_output_dir \
 
     

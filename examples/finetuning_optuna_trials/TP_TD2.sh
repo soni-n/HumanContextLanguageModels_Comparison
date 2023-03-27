@@ -22,11 +22,11 @@ python -O /home/nisoni/eihart/EIHaRT/optuna_trials/run_ft_eihart_trials.py \
     --per_device_eval_batch_size 32 \
     --block_size 100 \
     --max_train_blocks 8 \
-    --output_dir /chronos_data/nisoni/eihart_outputs/TP_FT/TD0_5e3_5e5_bs32_30ep_100bls \
+    --output_dir /chronos_data/nisoni/eihart_outputs/TP_FT/TD2_5e3_5e5_bs32_30ep_100bls \
     --add_history \
     --initial_history /home/nisoni/eihart/EIHaRT/initial_history/initialized_history_tensor.pt \
     --hostname localhost \
-    --train_table age.united_states.0.0.category \
+    --train_table age.united_states.2.2.category \
     --dev_table dummy \
     --test_table dummy \
     # --overwrite_output_dir \

@@ -1,9 +1,7 @@
 echo $@
-CUDA_VISIBLE_DEVICES=2 \
-python -O /home/nisoni/eihart/EIHaRT/optuna_trials/run_ft_eihart_trials.py \
-    --search_params \
-    --use_optuna \
-    --num_trials 10 \
+CUDA_VISIBLE_DEVICES=3 \
+python -O /home/nisoni/eihart/EIHaRT/run_ft_eihart.py \
+    --learning_rate 0.00046293776445514823 \
     --early_stopping_patience 6 \
     --model_name_or_path /home/nisoni/eihart/final8epoch_pt_model/checkpoint-227720 \
     --task_type document \
@@ -22,15 +20,10 @@ python -O /home/nisoni/eihart/EIHaRT/optuna_trials/run_ft_eihart_trials.py \
     --per_device_eval_batch_size 32 \
     --block_size 100 \
     --max_train_blocks 8 \
-    --output_dir /chronos_data/nisoni/eihart_outputs/TP_FT/TD0_5e3_5e5_bs32_30ep_100bls \
+    --output_dir /chronos_data/nisoni/eihart_outputs/after_Trials/TP_FT/TP_TDa_MIX_32bs_30ep_100bls_bestHP \
     --add_history \
     --initial_history /home/nisoni/eihart/EIHaRT/initial_history/initialized_history_tensor.pt \
-    --hostname localhost \
-    --train_table age.united_states.0.0.category \
+    --train_table age.united_states.a_MIX.a_MIX.category \
     --dev_table dummy \
     --test_table dummy \
     # --overwrite_output_dir \
-
-
-    
-    

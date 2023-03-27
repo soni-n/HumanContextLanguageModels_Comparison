@@ -1,9 +1,9 @@
 echo $@
-CUDA_VISIBLE_DEVICES=$1 \
-python -O HaRT/run_ft_hart.py \
+CUDA_VISIBLE_DEVICES=3 \
+python -O EIHaRT/run_ft_hart.py \
     --learning_rate 7.85427790392214e-06 \
     --early_stopping_patience 6 \
-    --model_name_or_path $2 \
+    --model_name_or_path /home/nisoni/eihart/final8epoch_pt_model/checkpoint-227720 \
     --task_type document \
     --task_name sentiment \
     --num_labels 3 \
@@ -21,12 +21,12 @@ python -O HaRT/run_ft_hart.py \
     --per_device_eval_batch_size 20 \
     --block_size 1024 \
     --max_train_blocks 8 \
-    --output_dir $3 \
+    --output_dir /chronos_data/nisoni/eihart_outputs/Doc_FT/sentiment \
     --add_history \
-    --initial_history HaRT/initial_history/initialized_history_tensor.pt \
-    --train_table HaRT/data/datasets/sentiment/sent_train_all.pkl \
-    --dev_table HaRT/data/datasets/sentiment/sent_dev_all.pkl \
-    --test_table HaRT/data/datasets/sentiment/sent_test_all.pkl \
+    --initial_history EIHaRT/initial_history/initialized_history_tensor.pt \
+    --train_table EIHaRT/data/datasets/sentiment/sent_train_all.pkl \
+    --dev_table EIHaRT/data/datasets/sentiment/sent_dev_all.pkl \
+    --test_table EIHaRT/data/datasets/sentiment/sent_test_all.pkl \
     # --overwrite_output_dir \
 
     

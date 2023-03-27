@@ -1,3 +1,10 @@
+0) MOST IMP
+
+trustpilot.py --- path to data is hard coded (goes to chia-chen folder for now!)
+run_ft_eihart.py and run_ft_eihart_trials.py has the path to trustpilot.py hard coded (goes to eihart/trustpilot.py for now)
+
+these hard codings are easy gateways to lose end bugs -- please remove hardcoding!
+
 I ) /users/nisoni/eihart/EIHaRT/data/data_collator.py
 
 1) rename is_user_level_ft to has_user_ids or something.

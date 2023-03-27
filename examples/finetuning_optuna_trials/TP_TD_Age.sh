@@ -7,7 +7,7 @@ python -O /home/nisoni/eihart/EIHaRT/optuna_trials/run_ft_eihart_trials.py \
     --early_stopping_patience 6 \
     --model_name_or_path /home/nisoni/eihart/final8epoch_pt_model/checkpoint-227720 \
     --task_type document \
-    --num_labels 5 \
+    --num_labels 2 \
     --evaluation_strategy epoch \
     --save_strategy epoch \
     --load_best_model_at_end \
@@ -22,11 +22,11 @@ python -O /home/nisoni/eihart/EIHaRT/optuna_trials/run_ft_eihart_trials.py \
     --per_device_eval_batch_size 32 \
     --block_size 100 \
     --max_train_blocks 8 \
-    --output_dir /chronos_data/nisoni/eihart_outputs/TP_FT/TD0_5e3_5e5_bs32_30ep_100bls \
+    --output_dir /chronos_data/nisoni/eihart_outputs/TP_FT/TD_Age_5e3_5e5_bs32_30ep_100bls \
     --add_history \
     --initial_history /home/nisoni/eihart/EIHaRT/initial_history/initialized_history_tensor.pt \
     --hostname localhost \
-    --train_table age.united_states.0.0.category \
+    --train_table age.united_states.a_MIX.a_MIX.class-category \
     --dev_table dummy \
     --test_table dummy \
     # --overwrite_output_dir \
