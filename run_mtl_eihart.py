@@ -194,7 +194,7 @@ def main():
     #     )
     
     elif model_args.model_name_or_path:
-        model = MTL_EIHaRTPreTrainedModel.from_pretrained(model_args.model_name_or_path)
+        model = MTL_EIHaRTPreTrainedModel.from_pretrained(model_args.model_name_or_path, config=config)
     else:
         logger.info("Training new model from scratch")
         model = AutoModelForCausalLM.from_config(config)
@@ -304,7 +304,8 @@ def main():
             checkpoint = model_args.model_name_or_path
         else: 
             checkpoint = None
-        train_result = trainer.train(resume_from_checkpoint=checkpoint)
+        train_result = trainer.train()
+        # train_result = trainer.train(resume_from_checkpoint=checkpoint)
         trainer.save_model()  # Saves the tokenizer too for easy upload
 
         metrics = train_result.metrics
