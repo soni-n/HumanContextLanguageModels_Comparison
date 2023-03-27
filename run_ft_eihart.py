@@ -189,7 +189,10 @@ def main():
     # dataset = load_dataset('/home/nisoni/eihart/TrustPilot/trustpilot.py', name='age.united_states.0.0.category', cache_dir="./reload")
     # dataset = load_dataset('/home/nisoni/eihart/TrustPilot/trustpilot.py', name='age.united_states.2.2.category', cache_dir="./reload")
     # dataset = load_dataset('/home/nisoni/eihart/TrustPilot/trustpilot.py', name='gender.united_states.F.F.age', cache_dir="./reload")
-    dataset = load_dataset('/home/nisoni/eihart/TrustPilot/trustpilot.py', name='gender.united_states.M.M.age', cache_dir="./reload")
+    # dataset = load_dataset('/home/nisoni/eihart/TrustPilot/trustpilot.py', name='gender.united_states.M.M.age', cache_dir="./reload")
+
+    name = data_args.train_table
+    dataset = load_dataset('/home/nisoni/eihart/TrustPilot/trustpilot.py', name=name, cache_dir="./reload")
 
     label_list = dataset["train"].unique("label")
     label_list.sort()
@@ -308,11 +311,11 @@ def main():
     test_dataset = dataset['test']
 
     ########### for debugging only ############
-    import torch
+    # import torch
 
-    train_dataset = torch.utils.data.Subset(train_dataset, range(0,11))
-    eval_dataset = torch.utils.data.Subset(eval_dataset, range(0,11))
-    test_dataset = torch.utils.data.Subset(test_dataset, range(0,13))
+    # train_dataset = torch.utils.data.Subset(train_dataset, range(0,11))
+    # eval_dataset = torch.utils.data.Subset(eval_dataset, range(0,11))
+    # test_dataset = torch.utils.data.Subset(test_dataset, range(0,13))
 
     ###########################################
 
@@ -463,6 +466,16 @@ def main():
     #         raise ValueError("Expecting dev or test data to run eval.")
 
     # Evaluation
+    if training_args.do_eval:
+        # if data_args.test_table is None:
+        #     raise ValueError("You are trying to predict on test data but forgot to provide a test data source path!")
+
+        # if data_args.dev_table is not None:
+        #     args = [logger, tokenizer, data_args.test_table, block_size, data_args.max_val_blocks, data_args, 'test', data_args.disable_hulm_batching]
+        #     eval_dataset, eval_uncut_blocks = load_dataset(args)
+            
+        logger.info("*** Evaluate Test set ***")
+        eval_test('dev', data_args, training_args, eval_dataset, 0, trainer)
     if training_args.do_predict:
         # if data_args.test_table is None:
         #     raise ValueError("You are trying to predict on test data but forgot to provide a test data source path!")
