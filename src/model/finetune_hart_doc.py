@@ -111,42 +111,35 @@ class HaRTForSequenceClassification(HaRTBasePreTrainedModel):
 
         all_blocks_last_hidden_states = transformer_outputs.all_blocks_extract_layer_hs if self.freeze_model else transformer_outputs.all_blocks_last_hidden_states 
         
-        # if self.finetuning_task=='user' or self.finetuning_task=='ope' or self.finetuning_task=='age':
-        #     if self.use_history_output:
-        #         states = transformer_outputs.history[0]
-        #         masks = transformer_outputs.history[1]
-        #         multiplied = tuple(l * r for l, r in zip(states, masks))
-        #         all_blocks_user_states = torch.stack(multiplied, dim=1)
-        #         all_blocks_masks = torch.stack(masks, dim=1)
-        #         sum = torch.sum(all_blocks_user_states, dim=1)
-        #         divisor = torch.sum(all_blocks_masks, dim=1)
-        #         hidden_states = sum/divisor
-        #     else:
-        #         raise ValueError("Since you don't want to use the user-states/history output for a user-level task, please customize the code as per your requirements.")
-        # else:
-        #     hidden_states = torch.stack(all_blocks_last_hidden_states, dim=1)
+        if self.finetuning_task=='user' or self.finetuning_task=='ope' or self.finetuning_task=='age':
+            if self.use_history_output:
+                states = transformer_outputs.history[0]
+                masks = transformer_outputs.history[1]
+                multiplied = tuple(l * r for l, r in zip(states, masks))
+                all_blocks_user_states = torch.stack(multiplied, dim=1)
+                all_blocks_masks = torch.stack(masks, dim=1)
+                sum = torch.sum(all_blocks_user_states, dim=1)
+                divisor = torch.sum(all_blocks_masks, dim=1)
+                hidden_states = sum/divisor
+            else:
+                raise ValueError("Since you don't want to use the user-states/history output for a user-level task, please customize the code as per your requirements.")
+        else:
+            hidden_states = torch.stack(all_blocks_last_hidden_states, dim=1)
        
-        # if self.use_hart_no_hist:
-        #     logits = self.score(all_blocks_last_hidden_states[0]) if self.freeze_model else self.score(self.ln_f(all_blocks_last_hidden_states[0]))
-        #     batch_size, _, sequence_length = input_ids.shape
-        #     sequence_lengths = torch.ne(input_ids, self.config.pad_token_id).sum(-1) - 1
-        #     pooled_logits = logits[range(batch_size), sequence_lengths.squeeze()]
-        # else:
-        #     if self.finetuning_task=='ope' or self.finetuning_task=='user' or self.freeze_model:
-        #         logits = self.score(hidden_states) 
-        #     elif self.finetuning_task=='age':
-        #         self.score(self.transform(self.ln_f(hidden_states)))
-        #     else:
-        #         logits = self.score(self.ln_f(hidden_states))
-        #     pooled_logits = logits if (user_ids is None or self.use_history_output) else \
-        #                 self.get_pooled_logits(logits, input_ids, inputs_embeds)
-
-        ## refactor!!
-        hidden_states = torch.stack(all_blocks_last_hidden_states, dim=1)
-        hidden_states = hidden_states.squeeze()
-        logits = self.score(self.ln_f(hidden_states))
-        # logits = self.score(hidden_states)
-        pooled_logits = self.get_pooled_logits(logits, input_ids, inputs_embeds)
+        if self.use_hart_no_hist:
+            logits = self.score(all_blocks_last_hidden_states[0]) if self.freeze_model else self.score(self.ln_f(all_blocks_last_hidden_states[0]))
+            batch_size, _, sequence_length = input_ids.shape
+            sequence_lengths = torch.ne(input_ids, self.config.pad_token_id).sum(-1) - 1
+            pooled_logits = logits[range(batch_size), sequence_lengths.squeeze()]
+        else:
+            if self.finetuning_task=='ope' or self.finetuning_task=='user' or self.freeze_model:
+                logits = self.score(hidden_states) 
+            elif self.finetuning_task=='age':
+                logits = self.score(self.transform(self.ln_f(hidden_states)))
+            else:
+                logits = self.score(self.ln_f(hidden_states))
+            pooled_logits = logits if (user_ids is None or self.use_history_output) else \
+                        self.get_pooled_logits(logits, input_ids, inputs_embeds)
 
         loss = None
         if labels is not None:

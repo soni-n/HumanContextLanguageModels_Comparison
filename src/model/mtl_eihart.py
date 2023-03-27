@@ -54,9 +54,11 @@ class MTL_EIHaRTPreTrainedModel(HaRTBasePreTrainedModel):
 
         self.attr_cls_head = AttributeClassificationHead(config)
         
+        ## homoscedastic variance param
         self.scale = nn.Parameter(torch.FloatTensor(2)) # one for each task
         self.scale.data.normal_(mean=0.0, std=self.config.initializer_range)
         
+        ## weighting losses param
         # self.scale = nn.Linear(2, 2, bias=False) # one for each task
         # self.scale.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
         
@@ -222,12 +224,13 @@ class MTL_EIHaRTPreTrainedModel(HaRTBasePreTrainedModel):
         # ac_loss =  ((torch.exp(-ac_log_var) * ac_loss) + ac_log_var)/2
         # mtl_loss = hulm_loss + ac_loss
 
-        # # homoscedastic loss (for CE and MSE)
-        # hulm_log_var = torch.log(self.scale[0] * self.scale[0])
-        # ac_log_var = torch.log(self.scale[1] * self.scale[1])
-        # hulm_loss = ((torch.exp(-hulm_log_var) * hulm_loss) + hulm_log_var)
-        # ac_loss =  ((torch.exp(-ac_log_var) * ac_loss) + ac_log_var)/2
-        # mtl_loss = hulm_loss + ac_loss
+        if labels is not None:
+            # homoscedastic loss (for CE and MSE)
+            hulm_log_var = torch.log(self.scale[0] * self.scale[0])
+            ac_log_var = torch.log(self.scale[1] * self.scale[1])
+            hulm_loss = ((torch.exp(-hulm_log_var) * hulm_loss) + hulm_log_var)
+            ac_loss =  ((torch.exp(-ac_log_var) * ac_loss) + ac_log_var)/2
+            mtl_loss = hulm_loss + ac_loss
 
         # # homoscedastic loss (scale parameter as variance)
         # hulm_log_var = torch.log(self.scale[0])
@@ -244,7 +247,7 @@ class MTL_EIHaRTPreTrainedModel(HaRTBasePreTrainedModel):
         # mtl_loss = hulm_loss + ac_loss 
         
         # TODO: only for debugging mode
-        mtl_loss = hulm_loss
+        # mtl_loss = hulm_loss
         
         if not return_dict:
             output = (last_block_last_hs, last_block_last_hs,) + arhulm_output[3:]
@@ -254,7 +257,7 @@ class MTL_EIHaRTPreTrainedModel(HaRTBasePreTrainedModel):
         ## compute_metrics doesn't set prediction_loss_only to true --> that doesn't set
         ## logits to None --> that causes an issue in concating logits.
         return EIHaRTOutput(
-            loss=mtl_loss,
+            loss=mtl_loss if labels is not None else None, #TODO: tentative labels condition added -- refactor, i guess?!,
             logits=logits,
             hulm_loss=hulm_ppl_loss.repeat(batch_size) if labels is not None else None, #TODO: tentative labels condition added -- refactor, i guess?!
             ac_loss=ac_loss.repeat(batch_size) if labels is not None else None,  #TODO: tentative labels condition added -- refactor, i guess?!
@@ -292,7 +295,13 @@ class AttributeClassificationHead(nn.Module):
         # self.freeze_model = config.freeze_model
         self.num_labels = config.ac_num_labels
         self.ac_task = config.ac_task
+
+        ## refeactor both below
         self.use_history_output = True #config.use_history_output
+        self.ln_f = nn.LayerNorm(config.n_embd, eps=config.layer_norm_epsilon) 
+
+        if self.ac_task=='age':
+            self.transform = nn.Linear(config.n_embd, config.n_embd)
         # self.use_hart_no_hist = config.use_hart_no_hist
         # if model_name_or_path:
         #     self.transformer = HaRTPreTrainedModel.from_pretrained(model_name_or_path)
@@ -374,8 +383,13 @@ class AttributeClassificationHead(nn.Module):
         else:
             raise ValueError("This code executes for a user-level auxiliary task only.")
        
-        logits = self.score(hidden_states)  ## or logits = self.score(self.ln_f(hidden_states))
 
+        ## Refactor logits
+        # logits = self.score(hidden_states)  ## or logits = self.score(self.ln_f(hidden_states))
+
+        # logits = self.score(self.ln_f(hidden_states))
+        if self.ac_task == 'age':
+            logits = self.score(self.transform(self.ln_f(hidden_states)))
         # if self.finetuning_task=='ope' or self.finetuning_task=='user':
         #     logits = self.score(hidden_states) 
         # elif self.finetuning_task=='age':
