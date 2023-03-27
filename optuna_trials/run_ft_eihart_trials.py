@@ -165,18 +165,20 @@ class EvalLogsCallback(TrainerCallback):
         print(json.dumps(metrics))      
     
     def on_save(self, args, state, control, **kwargs):
-        output_dir = state.best_model_checkpoint.split('/checkpoint')[0]
-        self.save_metrics('eval_{}'.format(self.metrics['epoch']), self.metrics, output_dir)
-        print("Saving eval metrics after epoch {} into {}".format(self.metrics['epoch'], output_dir))
+        if state.best_model_checkpoint:
+            output_dir = state.best_model_checkpoint.split('/checkpoint')[0]
+            self.save_metrics('eval_{}'.format(self.metrics['epoch']), self.metrics, output_dir)
+            print("Saving eval metrics after epoch {} into {}".format(self.metrics['epoch'], output_dir))
     
     def on_train_end(self, args, state, control, **kwargs):
-        output_dir = state.best_model_checkpoint.split('/checkpoint')[0]
-        metrics = state.trial_params.copy()
-        metrics["number_of_gpus"] = args.n_gpu
-        metrics["best_metric"] = state.best_metric
-        metrics["best_model_checkpoint"] = state.best_model_checkpoint
-        self.metrics = metrics
-        self.save_metrics('final', self.metrics, output_dir)
+        if state.best_model_checkpoint:
+            output_dir = state.best_model_checkpoint.split('/checkpoint')[0]
+            metrics = state.trial_params.copy()
+            metrics["number_of_gpus"] = args.n_gpu
+            metrics["best_metric"] = state.best_metric
+            metrics["best_model_checkpoint"] = state.best_model_checkpoint
+            self.metrics = metrics
+            self.save_metrics('final', self.metrics, output_dir)
     
     def save_metrics(self, split, metrics, output_dir, combined=True):
         path = os.path.join(output_dir, f"{split}_results.json")
@@ -412,12 +414,12 @@ def main():
     eval_dataset = dataset["validation"]
     test_dataset = dataset['test']
 
-    ########### for debugging only ############
-    import torch
+    # ########### for debugging only ############
+    # import torch
 
-    train_dataset = torch.utils.data.Subset(train_dataset, range(0,11))
-    eval_dataset = torch.utils.data.Subset(eval_dataset, range(0,11))
-    test_dataset = torch.utils.data.Subset(test_dataset, range(0,11))
+    # train_dataset = torch.utils.data.Subset(train_dataset, range(0,11))
+    # eval_dataset = torch.utils.data.Subset(eval_dataset, range(0,11))
+    # test_dataset = torch.utils.data.Subset(test_dataset, range(0,11))
 
     ###########################################
 
@@ -533,7 +535,9 @@ def main():
 
         def doc_optuna_hp_space(trial):
             return {
-                "learning_rate": trial.suggest_float("learning_rate", 1e-6, 1e-5, log=True),
+                # "learning_rate": trial.suggest_float("learning_rate", 1e-7, 1e-5, log=True),
+                "learning_rate": trial.suggest_float("learning_rate", 5e-5, 5e-3, log=True),
+                # "learning_rate": trial.suggest_float("learning_rate", 5e-4, 5e-1, log=True),
                 # "weight_decay": trial.suggest_float("weight_decay", 0.0, 1.0, log=False),
             }
         
@@ -572,7 +576,8 @@ def main():
                 # TODO: see if can get the best model from best model checkpoint instead of saving
                 # if yes, use HF trainer instead of CustomTrainer and remove run_hp_search code.
                 trainer.save_model(output_dir=output_dir)
-                return trainer.objective
+                # return trainer.objective
+                return trainer.state.best_metric
 
             timeout = kwargs.pop("timeout", None)
             n_jobs = kwargs.pop("n_jobs", 1)
