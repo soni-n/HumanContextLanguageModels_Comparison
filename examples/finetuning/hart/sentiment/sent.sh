@@ -1,9 +1,9 @@
 echo $@
-CUDA_VISIBLE_DEVICES=3 \
+CUDA_VISIBLE_DEVICES=1 \
 python -O EIHaRT/run_ft_hart.py \
     --learning_rate 7.85427790392214e-06 \
     --early_stopping_patience 6 \
-    --model_name_or_path /home/nisoni/eihart/final8epoch_pt_model/checkpoint-227720 \
+    --model_name_or_path $1 \
     --task_type document \
     --task_name sentiment \
     --num_labels 3 \

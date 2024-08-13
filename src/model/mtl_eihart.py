@@ -260,7 +260,7 @@ class MTL_EIHaRTPreTrainedModel(HaRTBasePreTrainedModel):
             loss=mtl_loss if labels is not None else None, #TODO: tentative labels condition added -- refactor, i guess?!,
             logits=logits,
             hulm_loss=hulm_ppl_loss.repeat(batch_size) if labels is not None else None, #TODO: tentative labels condition added -- refactor, i guess?!
-            ac_loss=ac_loss.repeat(batch_size) if labels is not None else None,  #TODO: tentative labels condition added -- refactor, i guess?!
+            ac_loss=ac_loss.repeat(batch_size) if ac_labels is not None else None,  #TODO: tentative labels condition added -- refactor, i guess?!
             last_hidden_state=last_block_last_hs,
             all_blocks_last_hidden_states = all_blocks_last_hs,
             all_blocks_extract_layer_hs = all_blocks_extract_layer_hs,
@@ -300,7 +300,7 @@ class AttributeClassificationHead(nn.Module):
         self.use_history_output = True #config.use_history_output
         self.ln_f = nn.LayerNorm(config.n_embd, eps=config.layer_norm_epsilon) 
 
-        if self.ac_task=='age':
+        if self.ac_task=='age' or self.ac_task == 'ope':
             self.transform = nn.Linear(config.n_embd, config.n_embd)
         # self.use_hart_no_hist = config.use_hart_no_hist
         # if model_name_or_path:
@@ -388,7 +388,7 @@ class AttributeClassificationHead(nn.Module):
         # logits = self.score(hidden_states)  ## or logits = self.score(self.ln_f(hidden_states))
 
         # logits = self.score(self.ln_f(hidden_states))
-        if self.ac_task == 'age':
+        if self.ac_task == 'age' or self.ac_task == 'ope':
             logits = self.score(self.transform(self.ln_f(hidden_states)))
         # if self.finetuning_task=='ope' or self.finetuning_task=='user':
         #     logits = self.score(hidden_states) 

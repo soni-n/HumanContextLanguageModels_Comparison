@@ -1,0 +1,3 @@
+/home/nisoni/eihart/EIHaRT/examples/finetuning_optuna_trials/tp_ft_hartbase5e5bestPT/TP_TDa_mix.sh /chronos_data/nisoni/eihart_outputs/PT/5e5_eihart_100pc_8ep_hsc_ce_mse_hart_age/checkpoint-113860
+/home/nisoni/eihart/EIHaRT/examples/finetuning_optuna_trials/tp_ft_hartbase5e5bestPT/TP_TD_Age.sh /chronos_data/nisoni/eihart_outputs/PT/5e5_eihart_100pc_8ep_hsc_ce_mse_hart_age/checkpoint-113860
+

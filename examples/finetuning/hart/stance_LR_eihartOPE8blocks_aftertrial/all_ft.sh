@@ -1,0 +1,5 @@
+/home/nisoni/eihart/EIHaRT/examples/finetuning/hart/stance_LR_eihartOPE8blocks_aftertrial/abo.sh /chronos_data/nisoni/eihart_outputs/PT/5e5_eihart_100pc_8ep_hsc_ce_mse_hart_OPE
+/home/nisoni/eihart/EIHaRT/examples/finetuning/hart/stance_LR_eihartOPE8blocks_aftertrial/ath.sh /chronos_data/nisoni/eihart_outputs/PT/5e5_eihart_100pc_8ep_hsc_ce_mse_hart_OPE
+/home/nisoni/eihart/EIHaRT/examples/finetuning/hart/stance_LR_eihartOPE8blocks_aftertrial/clim.sh /chronos_data/nisoni/eihart_outputs/PT/5e5_eihart_100pc_8ep_hsc_ce_mse_hart_OPE
+/home/nisoni/eihart/EIHaRT/examples/finetuning/hart/stance_LR_eihartOPE8blocks_aftertrial/clin.sh /chronos_data/nisoni/eihart_outputs/PT/5e5_eihart_100pc_8ep_hsc_ce_mse_hart_OPE
+/home/nisoni/eihart/EIHaRT/examples/finetuning/hart/stance_LR_eihartOPE8blocks_aftertrial/fem.sh /chronos_data/nisoni/eihart_outputs/PT/5e5_eihart_100pc_8ep_hsc_ce_mse_hart_OPE

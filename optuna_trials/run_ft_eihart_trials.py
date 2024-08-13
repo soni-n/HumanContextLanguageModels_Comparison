@@ -378,7 +378,7 @@ def main():
     config.use_hart_no_hist = model_args.use_hart_no_hist
     
     if training_args.do_train and not model_args.load_non_PT_hulm_model:
-        hart = MTL_EIHaRTPreTrainedModel.from_pretrained(model_args.model_name_or_path)
+        hart = MTL_EIHaRTPreTrainedModel.from_pretrained(model_args.model_name_or_path, config=config)
     elif training_args.do_train and model_args.load_non_PT_hulm_model:
         hartbaseLMModel = HaRTBaseLMHeadModel.from_pretrained(model_args.model_name_or_path, config=config)
         hartbaseLMModel.resize_token_embeddings(len(tokenizer))

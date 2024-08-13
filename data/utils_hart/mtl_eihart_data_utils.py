@@ -1,6 +1,6 @@
 import time
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine.url import URL
 from transformers import BatchEncoding
 
@@ -15,9 +15,10 @@ def get_fields():
     }
 
 def get_conn(data_args):
-    myDB = URL(drivername='mysql', host=data_args.hostname,
-                database=data_args.db, query={'read_default_file': '~/.my.cnf3', 'charset': 'utf8mb4'})
-    engine = create_engine(myDB, encoding='latin1')
+    myDB = URL.create(drivername='mysql', host=data_args.hostname,
+                database=data_args.db, query={'read_default_file': '~/.my.cnf', 'charset': 'utf8mb4'})
+    engine = create_engine(myDB)
+    # engine = create_engine(myDB, encoding='latin1')
     conn = engine.connect()
     return conn
 
@@ -53,7 +54,7 @@ def get_data_from_db(logger, table, data_args, data_type, ac_label_field):
 
             where_clause = ''
             stmt = select_clause + where_clause + order_clause + limit_clause 
-        results = conn.execute(stmt)
+        results = conn.execute(text(stmt))
     elif data_type=='dev':
         if 'en_non_oosmsgs' in table:      
             filter_column = 'is_oosuser_dev'
@@ -67,7 +68,7 @@ def get_data_from_db(logger, table, data_args, data_type, ac_label_field):
         else:
             where_clause = ' where ' + source_filter_column + 'not in (' + source_not_included + ')'
             stmt = select_clause + where_clause + order_clause + limit_clause
-        results = conn.execute(stmt)
+        results = conn.execute(text(stmt))
     elif data_type=='test':
         if 'en_non_oosmsgs' in table:      
             filter_column = 'is_oosuser_test'
@@ -82,8 +83,20 @@ def get_data_from_db(logger, table, data_args, data_type, ac_label_field):
         else:
             where_clause = ''
             stmt = select_clause + where_clause + order_clause + limit_clause 
-        results = conn.execute(stmt)
+        results = conn.execute(text(stmt))
+    elif data_type=='test_qlength':
+        if 'en_non_oosmsgs' in table:      
+            filter_table = 'masterstats_lbp_upt50_en_test'
+            where_clause = ' where user_id in (select user_id from ' + filter_table + ' where qlength >= 100)'
+            stmt = select_clause + where_clause + order_clause + limit_clause
+        else:
+            filter_table = 'masterstats_lbp_testset'
+            where_clause = ' where user_id in (select user_id from ' + filter_table + ' where qlength >= 100)'
+            stmt = select_clause + where_clause + order_clause + limit_clause 
+        results = conn.execute(text(stmt))
+        results = conn.execute(text(stmt))
     
+
     data = pd.DataFrame(results.fetchall()) 
     data.columns = results.keys()
     # data[user_id_column] = data['user_dataset_id']
@@ -127,14 +140,19 @@ def get_ac_labels(conn, data_type, data_table, label_field):
             table = 'masterstats_lbp_upt50_en_test_seen'
         else:
             ## fix this when generalizing
-            # table = 'masterstats_lbp_testset'
-            table = 'masterstats_lbp_upt50_en_train'
-            where_clause = ' where user_id in (select distinct user_id from ' + data_table + ')'
+            table = 'masterstats_lbp_testset'
+            # table = 'masterstats_lbp_upt50_en_train'
+            # where_clause = ' where user_id in (select distinct user_id from ' + data_table + ')'
     elif data_type=='test_qlength':
-        table = 'masterstats_lbp_testset_qlen100'
+        if 'en_non_oosmsgs' in data_table:      
+            table = 'masterstats_lbp_upt50_en_test'
+            where_clause = ' where qlength >= 100'
+        else:
+            table = 'masterstats_lbp_testset'
+            where_clause = ' where qlength >= 100'
 
     stmt = select_clause + table + where_clause +order_clause + limit_clause
-    results = conn.execute(stmt)
+    results = conn.execute(text(stmt))
 
     labels = pd.DataFrame(results.fetchall()) 
     labels.columns = [user_id_column, ac_label_column]
@@ -228,7 +246,8 @@ def group_data(data, max_blocks, data_type, logger):
 
 def load_dataset(logger, tokenizer, table, block_size, max_blocks, data_args, data_type, disable_hulm_batching):
     fields = get_fields()
-    ac_label_field = 'age' # data_args.ac_task_name
+    ac_label_field = data_args.ac_task_name
+    print("^^^^^^^^^ ac_label: ", ac_label_field)
     if 'pkl' in table:
         data = get_data_from_pkl(logger, table, fields, data_type)
     elif 'csv' in table:

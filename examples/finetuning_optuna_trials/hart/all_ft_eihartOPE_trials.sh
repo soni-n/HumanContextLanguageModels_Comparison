@@ -1,0 +1,5 @@
+EIHaRT/examples/finetuning_optuna_trials/hart/stance/abo.sh $@ 2,3 /chronos_data/nisoni/eihart_outputs/PT/5e5_eihart_100pc_8ep_hsc_ce_mse_hart_OPE /chronos_data/nisoni/eihartOPE/doc_ft_trials_5e4_5e6/stance/abo
+EIHaRT/examples/finetuning_optuna_trials/hart/stance/ath.sh $@ 2,3 /chronos_data/nisoni/eihart_outputs/PT/5e5_eihart_100pc_8ep_hsc_ce_mse_hart_OPE /chronos_data/nisoni/eihartOPE/doc_ft_trials_5e4_5e6/stance/ath
+EIHaRT/examples/finetuning_optuna_trials/hart/stance/clim.sh $@ 2,3 /chronos_data/nisoni/eihart_outputs/PT/5e5_eihart_100pc_8ep_hsc_ce_mse_hart_OPE /chronos_data/nisoni/eihartOPE/doc_ft_trials_5e4_5e6/stance/clim
+EIHaRT/examples/finetuning_optuna_trials/hart/stance/clin.sh $@ 2,3 /chronos_data/nisoni/eihart_outputs/PT/5e5_eihart_100pc_8ep_hsc_ce_mse_hart_OPE /chronos_data/nisoni/eihartOPE/doc_ft_trials_5e4_5e6/stance/clin
+EIHaRT/examples/finetuning_optuna_trials/hart/stance/fem.sh $@ 2,3 /chronos_data/nisoni/eihart_outputs/PT/5e5_eihart_100pc_8ep_hsc_ce_mse_hart_OPE /chronos_data/nisoni/eihartOPE/doc_ft_trials_5e4_5e6/stance/fem

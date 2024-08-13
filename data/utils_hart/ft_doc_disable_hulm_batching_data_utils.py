@@ -1,8 +1,8 @@
 import time
 import math
 import pandas as pd
-from sqlalchemy import create_engine
-from sqlalchemy.engine.url import URL
+# from sqlalchemy import create_engine
+# from sqlalchemy.engine.url import URL
 from transformers import BatchEncoding
 
 user_id_column = 'user_id'

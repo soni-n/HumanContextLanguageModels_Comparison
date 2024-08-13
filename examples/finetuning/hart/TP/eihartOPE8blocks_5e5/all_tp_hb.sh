@@ -1,0 +1,4 @@
+/home/nisoni/eihart/EIHaRT/examples/finetuning/hart/TP/eihartOPE8blocks_5e5/TP_TD0.sh /chronos_data/nisoni/eihart_outputs/PT/5e5_eihart_100pc_8ep_hsc_ce_mse_hart_OPE
+/home/nisoni/eihart/EIHaRT/examples/finetuning/hart/TP/eihartOPE8blocks_5e5/TP_TD2.sh /chronos_data/nisoni/eihart_outputs/PT/5e5_eihart_100pc_8ep_hsc_ce_mse_hart_OPE
+/home/nisoni/eihart/EIHaRT/examples/finetuning/hart/TP/eihartOPE8blocks_5e5/TP_TDa_MIX.sh /chronos_data/nisoni/eihart_outputs/PT/5e5_eihart_100pc_8ep_hsc_ce_mse_hart_OPE
+/home/nisoni/eihart/EIHaRT/examples/finetuning/hart/TP/eihartOPE8blocks_5e5/TP_TD_Age.sh /chronos_data/nisoni/eihart_outputs/PT/5e5_eihart_100pc_8ep_hsc_ce_mse_hart_OPE

@@ -47,7 +47,7 @@ from transformers.integrations import (  # isort: split
     is_ray_tune_available,
     run_hp_search_optuna,
     run_hp_search_ray,
-    init_deepspeed,
+    # init_deepspeed,
 )
 
 from transformers.trainer_utils import BestRun, get_last_checkpoint, is_main_process, IntervalStrategy, HPSearchBackend
@@ -55,12 +55,12 @@ from transformers.trainer_utils import BestRun, get_last_checkpoint, is_main_pro
 from args.ft_args import DataTrainingArguments, ModelArguments
 from src.model.configuration_hart import HaRTConfig
 from src.model.modeling_hart import HaRTBaseLMHeadModel
-from src.model.hart import HaRTPreTrainedModel
-from src.model.finetune_hart import HaRTForSequenceClassification
+from src.model.mtl_eihart import MTL_EIHaRTPreTrainedModel
+from src.model.finetune_hart_doc import HaRTForSequenceClassification
 from data.utils_hart.ft_doc_disable_hulm_batching_data_utils import load_dataset as load_no_hulm_dataset
 from data.utils_hart.ft_doc_data_utils import load_dataset as load_doc_dataset
 from data.utils_hart.ft_user_data_utils import load_dataset as load_user_dataset
-from data.data_collator import DataCollatorWithPaddingForHaRT
+from data.mtl_eihart_data_collator import DataCollatorWithPaddingForHaRT
 
 logger = logging.getLogger(__name__)
 
@@ -163,18 +163,20 @@ class EvalLogsCallback(TrainerCallback):
         print(json.dumps(metrics))      
     
     def on_save(self, args, state, control, **kwargs):
-        output_dir = state.best_model_checkpoint.split('/checkpoint')[0]
-        self.save_metrics('eval_{}'.format(self.metrics['epoch']), self.metrics, output_dir)
-        print("Saving eval metrics after epoch {} into {}".format(self.metrics['epoch'], output_dir))
+        if state.best_model_checkpoint:
+            output_dir = state.best_model_checkpoint.split('/checkpoint')[0]
+            self.save_metrics('eval_{}'.format(self.metrics['epoch']), self.metrics, output_dir)
+            print("Saving eval metrics after epoch {} into {}".format(self.metrics['epoch'], output_dir))
     
     def on_train_end(self, args, state, control, **kwargs):
-        output_dir = state.best_model_checkpoint.split('/checkpoint')[0]
-        metrics = state.trial_params.copy()
-        metrics["number_of_gpus"] = args.n_gpu
-        metrics["best_metric"] = state.best_metric
-        metrics["best_model_checkpoint"] = state.best_model_checkpoint
-        self.metrics = metrics
-        self.save_metrics('final', self.metrics, output_dir)
+        if state.best_model_checkpoint:
+            output_dir = state.best_model_checkpoint.split('/checkpoint')[0]
+            metrics = state.trial_params.copy()
+            metrics["number_of_gpus"] = args.n_gpu
+            metrics["best_metric"] = state.best_metric
+            metrics["best_model_checkpoint"] = state.best_model_checkpoint
+            self.metrics = metrics
+            self.save_metrics('final', self.metrics, output_dir)
     
     def save_metrics(self, split, metrics, output_dir, combined=True):
         path = os.path.join(output_dir, f"{split}_results.json")
@@ -356,11 +358,11 @@ def main():
     config.use_hart_no_hist = model_args.use_hart_no_hist
     
     if training_args.do_train and not model_args.load_non_PT_hulm_model:
-        hart = HaRTPreTrainedModel.from_pretrained(model_args.model_name_or_path)
+        hart = MTL_EIHaRTPreTrainedModel.from_pretrained(model_args.model_name_or_path, config=config)
     elif training_args.do_train and model_args.load_non_PT_hulm_model:
         hartbaseLMModel = HaRTBaseLMHeadModel.from_pretrained(model_args.model_name_or_path, config=config)
         hartbaseLMModel.resize_token_embeddings(len(tokenizer))
-        hart = HaRTPreTrainedModel(config, hartbaseLMModel)
+        hart = MTL_EIHaRTPreTrainedModel(config, hartbaseLMModel)
     else:
         raise ValueError("You're neither training nor evaluating. Can't pick a model because I don't know what do you want to do.")
 
@@ -529,7 +531,8 @@ def main():
                 # TODO: see if can get the best model from best model checkpoint instead of saving
                 # if yes, use HF trainer instead of CustomTrainer and remove run_hp_search code.
                 trainer.save_model(output_dir=output_dir)
-                return trainer.objective
+                # return trainer.objective
+                return trainer.state.best_metric
 
             timeout = kwargs.pop("timeout", None)
             n_jobs = kwargs.pop("n_jobs", 1)
@@ -611,10 +614,12 @@ def main():
         trainer.model = trainer.model.to(training_args.device)
         trainer.save_model()
         
-        args = [logger, tokenizer, data_args.test_table, block_size, data_args.max_val_blocks, data_args, 'test', data_args.disable_hulm_batching]
+        # args = [logger, tokenizer, data_args.test_table, block_size, data_args.max_val_blocks, data_args, 'test', data_args.disable_hulm_batching]
+        args = [logger, tokenizer, data_args.dev_table, block_size, data_args.max_val_blocks, data_args, 'dev', data_args.disable_hulm_batching]
         eval_dataset, eval_uncut_blocks = load_dataset(args)
         logger.info("*** Evaluate all test set ***")
-        eval_test(best_trial, 'test', data_args, training_args, eval_dataset, eval_uncut_blocks, trainer)
+        # eval_test(best_trial, 'test', data_args, training_args, eval_dataset, eval_uncut_blocks, trainer)
+        eval_test(best_trial, 'dev', data_args, training_args, eval_dataset, eval_uncut_blocks, trainer)
 
 def eval_test(best_trial, test_type, data_args, training_args, eval_dataset, eval_uncut_blocks, trainer):
     metrics = trainer.evaluate(eval_dataset=eval_dataset)

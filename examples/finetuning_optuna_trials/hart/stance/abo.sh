@@ -1,6 +1,6 @@
 echo $@
 CUDA_VISIBLE_DEVICES=$1 \
-python -O HaRT/optuna_trials/run_ft_hart_trials.py \
+python -O EIHaRT/optuna_trials/run_ft_hart_trials.py \
     --search_params \
     --use_optuna \
     --num_trials 10 \
@@ -25,10 +25,10 @@ python -O HaRT/optuna_trials/run_ft_hart_trials.py \
     --max_train_blocks 8 \
     --output_dir $3 \
     --add_history \
-    --initial_history HaRT/initial_history/initialized_history_tensor.pt \
-    --train_table HaRT/data/datasets/stance/abo_train_all.pkl \
-    --dev_table HaRT/data/datasets/stance/abo_dev_all.pkl \
-    --test_table HaRT/data/datasets/stance/abo_test_all.pkl \
+    --initial_history EIHaRT/initial_history/initialized_history_tensor.pt \
+    --train_table EIHaRT/data/datasets/stance/abo_train_all.pkl \
+    --dev_table EIHaRT/data/datasets/stance/abo_dev_all.pkl \
+    --test_table EIHaRT/data/datasets/stance/abo_test_all.pkl \
     # --overwrite_output_dir \
 
     

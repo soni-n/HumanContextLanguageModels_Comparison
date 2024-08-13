@@ -1,5 +1,5 @@
 echo $@
-CUDA_VISIBLE_DEVICES=3,0 \
+CUDA_VISIBLE_DEVICES=3,2 \
 python -O /home/nisoni/eihart/EIHaRT/run_mtl_eihart.py \
     --label_names ac_labels \
     --ac_task_name age \
@@ -12,7 +12,7 @@ python -O /home/nisoni/eihart/EIHaRT/run_mtl_eihart.py \
     --do_eval \
     --do_predict \
     --output_dir /chronos_data/nisoni/eihart_outputs/PT/509e7_eihart_100pc_8ep_hsc_ce_mse_hart_age \
-    --num_train_epochs 8 \
+    --num_train_epochs 15 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 20 \
     --block_size 1024 \

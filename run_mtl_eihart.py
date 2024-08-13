@@ -354,7 +354,10 @@ def main():
     if training_args.do_predict:
         logger.info("*** Predict ***")
 
-        eval_dataset, eval_uncut_blocks = load_dataset(logger, tokenizer, data_args.test_table, block_size, data_args.max_val_blocks, data_args, 'test', data_args.disable_hulm_batching)
+        if data_args.ac_task_name == 'ope':
+            eval_dataset, eval_uncut_blocks = load_dataset(logger, tokenizer, data_args.test_table, block_size, data_args.max_val_blocks, data_args, 'test_qlength', data_args.disable_hulm_batching)
+        else:
+            eval_dataset, eval_uncut_blocks = load_dataset(logger, tokenizer, data_args.test_table, block_size, data_args.max_val_blocks, data_args, 'test', data_args.disable_hulm_batching)
 
         metrics = trainer.evaluate(eval_dataset=eval_dataset)
 

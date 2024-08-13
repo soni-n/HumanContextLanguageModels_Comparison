@@ -268,8 +268,8 @@ def main():
         hartbaseLMModel.resize_token_embeddings(len(tokenizer))
         hart = MTL_EIHaRTPreTrainedModel(config, hartbaseLMModel)
         model = HaRTForSequenceClassification(config, pt_model=hart)
-    elif training_args.do_eval and not training_args.do_train:
-        model = HaRTForSequenceClassification.from_pretrained(model_args.model_name_or_path)
+    elif training_args.do_eval or training_args.do_predict and not training_args.do_train:
+        model = HaRTForSequenceClassification.from_pretrained(model_args.model_name_or_path, config=config)
     else:
         raise ValueError("You're neither training nor evaluating. Can't pick a model because I don't know what do you want to do.")
 
@@ -375,10 +375,12 @@ def main():
                 np.savetxt(training_args.output_dir +'/preds.txt', preds, fmt='%d')
                 np.savetxt(training_args.output_dir + '/labels.txt', labels, fmt='%d')
             precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average='weighted')
+            precision_mac, recall_mac, f1_macro, _ = precision_recall_fscore_support(labels, preds, average='macro')
             acc = accuracy_score(labels, preds)
             return {
                 'accuracy': acc,
                 'f1': f1,
+                'f1_macro':f1_macro,
                 'precision': precision,
                 'recall': recall
             }

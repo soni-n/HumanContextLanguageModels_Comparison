@@ -1,10 +1,10 @@
 echo $@
-CUDA_VISIBLE_DEVICES=3 \
+CUDA_VISIBLE_DEVICES=1 \
 python -O EIHaRT/run_ft_hart.py \
     --learning_rate 1.8582077947606702e-05 \
     --early_stopping_patience 6 \
     --weight_decay 0.01 \
-    --model_name_or_path /home/nisoni/eihart/final8epoch_pt_model/checkpoint-227720 \
+    --model_name_or_path $1 \
     --task_type document \
     --task_name stance \
     --num_labels 3 \

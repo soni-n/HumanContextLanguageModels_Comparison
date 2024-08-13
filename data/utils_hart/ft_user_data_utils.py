@@ -1,7 +1,7 @@
 import time
 import pandas as pd
-from sqlalchemy import create_engine
-from sqlalchemy.engine.url import URL
+# from sqlalchemy import create_engine, text
+# from sqlalchemy.engine.url import URL
 from transformers import BatchEncoding
 
 user_id_column = 'user_id'
@@ -22,9 +22,10 @@ def get_fields(data_args):
         }
 
 def get_conn(data_args):
-    myDB = URL(drivername='mysql', host=data_args.hostname,
+    myDB = URL.create(drivername='mysql', host=data_args.hostname,
                 database=data_args.db, query={'read_default_file': '~/.my.cnf', 'charset': 'utf8mb4'})
-    engine = create_engine(myDB, encoding='latin1')
+    # engine = create_engine(myDB, encoding='latin1')
+    engine = create_engine(myDB)
     conn = engine.connect()
     return conn
 
@@ -39,7 +40,7 @@ def get_data_from_db(logger, table, label_field, data_args, data_type):
     limit_clause =  '' #if not __debug__ else ' limit 10'
 
     if data_type=='train': 
-        if "en_non_oosmsgs" in table:      
+        if "en_non_oosmsgs" in table or "1pc" in table:      
             filter_table = 'masterstats_lbp_upt50_en_train'
             where_clause = ' where user_id in (select user_id from ' + filter_table + ')'
             stmt = select_clause + where_clause + order_clause + limit_clause
@@ -71,9 +72,12 @@ def get_data_from_db(logger, table, label_field, data_args, data_type):
         if 'en_non_oosmsgs' in table:      
             filter_table = 'masterstats_lbp_upt50_en_test'
             where_clause = ' where user_id in (select user_id from ' + filter_table + ' where qlength >= 100)'  
+        else:
+            filter_table = 'masterstats_lbp_testset'
+            where_clause = ' where user_id in (select user_id from ' + filter_table + ' where qlength >= 100)'
         
     stmt = select_clause + where_clause + order_clause + limit_clause    
-    results = conn.execute(stmt)
+    results = conn.execute(text(stmt))
     
     data = pd.DataFrame(results.fetchall()) 
     data.columns = results.keys()
@@ -93,7 +97,7 @@ def get_labels(conn, data_type, data_table, label_field):
     limit_clause =  '' #if not __debug__ else ' limit 10'
 
     if data_type=='train':
-        if 'en_non_oosmsgs' in data_table: 
+        if 'en_non_oosmsgs' in data_table or "1pc" in data_table: 
             table = 'masterstats_lbp_upt50_en_train'
             where_clause = ' where user_id in (select distinct user_id from ' + data_table + ')'
         else:
@@ -117,10 +121,11 @@ def get_labels(conn, data_type, data_table, label_field):
         else:
             table = 'masterstats_lbp_testset'
     elif data_type=='test_qlength':
-        table = 'masterstats_lbp_testset_qlen100'
+        table = 'masterstats_lbp_testset'
+        where_clause = ' where qlength >= 100'
 
     stmt = select_clause + table + where_clause +order_clause + limit_clause
-    results = conn.execute(stmt)
+    results = conn.execute(text(stmt))
 
     labels = pd.DataFrame(results.fetchall()) 
     labels.columns = [user_id_column, label_column]
@@ -214,7 +219,7 @@ def group_data(data, max_blocks, logger):
 
 def load_dataset(logger, tokenizer, table, block_size, max_blocks, data_args, data_type, disable_hulm_batching):
     label_field = data_args.task_name
-    data_type = 'test_qlength' if data_args.task_name == 'ope' else data_type
+    data_type = 'test_qlength' if data_args.task_name == 'ope' and data_type == 'test' else data_type
     fields = get_fields(data_args)
     if 'pkl' in table:
         data, labels = get_data_from_pkl(logger, table, fields, data_type)

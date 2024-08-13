@@ -1,0 +1,4 @@
+/home/nisoni/eihart/EIHaRT/examples/finetuning/hart/TP/hart_base_5e5best_afterTrials/TP_TD0.sh /chronos_data/nisoni/eihart_outputs/PT/5e5_eihart_100pc_8ep_hsc_ce_mse_hart_age/checkpoint-113860
+/home/nisoni/eihart/EIHaRT/examples/finetuning/hart/TP/hart_base_5e5best_afterTrials/TP_TD2.sh /chronos_data/nisoni/eihart_outputs/PT/5e5_eihart_100pc_8ep_hsc_ce_mse_hart_age/checkpoint-113860
+/home/nisoni/eihart/EIHaRT/examples/finetuning/hart/TP/hart_base_5e5best_afterTrials/TP_TDa_MIX.sh /chronos_data/nisoni/eihart_outputs/PT/5e5_eihart_100pc_8ep_hsc_ce_mse_hart_age/checkpoint-113860
+/home/nisoni/eihart/EIHaRT/examples/finetuning/hart/TP/hart_base_5e5best_afterTrials/TP_TD_Age.sh /chronos_data/nisoni/eihart_outputs/PT/5e5_eihart_100pc_8ep_hsc_ce_mse_hart_age/checkpoint-113860

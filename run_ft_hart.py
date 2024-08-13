@@ -45,7 +45,7 @@ from src.model.finetune_hart_doc import HaRTForSequenceClassification
 from data.utils_hart.ft_doc_disable_hulm_batching_data_utils import load_dataset as load_no_hulm_dataset
 from data.utils_hart.ft_doc_data_utils import load_dataset as load_doc_dataset
 from data.utils_hart.ft_user_data_utils import load_dataset as load_user_dataset
-from data.mtl_eihart_data_collator import DataCollatorWithPaddingForHaRT
+from data.eihart_ft_data_collator import DataCollatorWithPaddingForHaRT
 
 logger = logging.getLogger(__name__)
     
@@ -247,20 +247,21 @@ def main():
         hartbaseLMModel.resize_token_embeddings(len(tokenizer))
         hart = MTL_EIHaRTPreTrainedModel(config, hartbaseLMModel)
         model = HaRTForSequenceClassification(config, pt_model=hart)
-    elif training_args.do_eval and not training_args.do_train:
-        model = HaRTForSequenceClassification.from_pretrained(model_args.model_name_or_path)
+    elif training_args.do_eval or training_args.do_predict and not training_args.do_train:
+        model = HaRTForSequenceClassification.from_pretrained(model_args.model_name_or_path, config=config)
     else:
         raise ValueError("You're neither training nor evaluating. Can't pick a model because I don't know what do you want to do.")
 
-    def freeze_params(model: nn.Module):
-        for par in model.parameters():
-            par.requires_grad = False
+    # def freeze_params(model: nn.Module):
+    #     for par in model.parameters():
+    #         par.requires_grad = False
 
-    if model_args.freeze_model:        
-        freeze_params(model.transformer)
+    # if model_args.freeze_model:        
+    #     freeze_params(model.transformer)
     
-    if data_args.task_type=='user':
-        freeze_params(model.transformer.transformer)
+    # if data_args.task_type=='user':
+    #     print("i am frreeezinnngg #########")
+    #     freeze_params(model.transformer.transformer)
     
     if data_args.block_size is None:
         block_size = tokenizer.model_max_length
